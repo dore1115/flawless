@@ -1,11 +1,14 @@
 spring:
   application:
     name: flawless
+
   messages:
     basename: messages, errors
     encoding: UTF-8
+
   profiles:
     active: local
+
 
 server:
   servlet:
