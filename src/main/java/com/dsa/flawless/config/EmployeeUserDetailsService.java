@@ -22,9 +22,7 @@ public class EmployeeUserDetailsService implements UserDetailsService {
 	@Override
 	public UserDetails loadUserByUsername(String username)
 			throws UsernameNotFoundException {
-		log.info("loadUserByUsername called");
-		System.out.println("===== loadUserByUsername 호출 =====");
-		System.out.println("username = " + username);
+
 		
 		Employee employee = employeeRepository.findByUsername(username)
 				.orElseThrow(() -> {
@@ -38,10 +36,6 @@ public class EmployeeUserDetailsService implements UserDetailsService {
 		System.out.println("password = " + employee.getPassword());
 		System.out.println("role = " + employee.getRole());
 		
-		return User.builder()
-				.username(employee.getUsername())
-				.password(employee.getPassword())
-				.roles(employee.getRole().name())
-				.build();
+		return new EmployeeUserDetails(employee);
 	}
 }

@@ -17,10 +17,11 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/login").permitAll() // login은 누구나 접근 가능
 						.anyRequest() // 그 외 모든 요청
-						.permitAll() //! REQ-NF-G-003으로 인하여 인가 아키텍쳐는 추후 적용
+						.authenticated() //! REQ-NF-G-003으로 인하여 인가 아키텍쳐는 추후 적용
 				)
 				.formLogin(form -> form
 						.loginPage("/login")
+						.loginProcessingUrl("/login")
 						.defaultSuccessUrl("/", true)
 				)
 				.logout(logout -> logout
