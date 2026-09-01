@@ -32,11 +32,11 @@ public class Employee {
 	@Column(nullable = false, length = 20)
 	private String phone;
 	
-	@Column(name = "department_id", nullable = false)
-	private Long departmentId;
+	@JoinColumn(name = "department_id") @ManyToOne(fetch = FetchType.EAGER)
+	private Department department;
 	
-	@Column(name = "position_id", nullable = false)
-	private Long positionId;
+	@JoinColumn(name = "position_id") @ManyToOne(fetch = FetchType.EAGER)
+	private Position position;
 	
 	@Column(nullable = false, length = 20) @Enumerated(EnumType.STRING)
 	private Role role;
