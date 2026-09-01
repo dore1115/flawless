@@ -23,11 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PositionService {
 
     private final PositionRepository positionRepository;
-
-    @Transactional(readOnly = true)
+    
     public List<Position> findAll() {
         return positionRepository.findAll();
     }

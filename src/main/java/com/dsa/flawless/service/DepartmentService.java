@@ -24,11 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
-
-    @Transactional(readOnly = true)
+    
     public List<Department> findAll() {
         return departmentRepository.findAll();
     }
