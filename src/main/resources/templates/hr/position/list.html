@@ -1,0 +1,86 @@
+<!--
+  templates/hr/position/list.html
+  화면 ID: HR-003 (직책 목록)
+  대응 Controller: PositionController.list() [GET /hr/positions], PositionController.create() [POST /hr/positions]
+  관련 요구사항: REQ-F-S-005(직책 신설) — "회사 차원에서 새로운 직책 종류를 추가 등록한다."
+  접근 권한: 인사관리자
+  ※ REQ-NF-G-003(전역 인가 아키텍처 부재)로 인해 현재는 로그인 여부와 무관하게 접근·등록이 가능하다.
+  ※ REQ-NF-H-002(입력값 서버단 검증 부재) 결함 시딩: 아래 입력창의 required는 브라우저에서만 막을 뿐,
+    서버(PositionService.create())는 직책명 공백·중복 여부를 검증하지 않는다. 폼이 아닌 API를 직접
+    두드리면 빈 직책이 저장되거나, 중복 직책명일 경우 DB 제약을 그대로 위반해 500 에러가 노출된다.
+  Model 속성: positions(List<Position>), positionForm(PositionCreateForm), message(String, flash)
+-->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>직책 목록 | Enterprise Resource Planning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100">
+
+<header class="bg-blue-800">
+    <div class="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
+        <h1 class="text-white font-bold text-lg">Enterprise Resource Planning</h1>
+        <span class="text-blue-200 text-sm">인사관리 &gt; 사원 목록 &gt; 직책 목록</span>
+    </div>
+</header>
+
+<main class="max-w-[1200px] mx-auto px-6 py-10">
+
+    <!-- 성공 메시지: 화면설계서 5.공통 UI 규칙 - 상단 배너(플래시 메시지)로 표시 -->
+    <div th:if="${message}" class="mb-6 flex items-center gap-3 bg-green-50 border border-green-200 rounded-md px-4 py-3">
+        <span class="flex-none w-4 h-4 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center">✓</span>
+        <p class="text-sm font-medium text-green-700" th:text="${message}">직책이 등록되었습니다.</p>
+    </div>
+
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-slate-900">직책 목록</h2>
+        <a th:href="@{/hr/employees}" class="text-sm text-blue-600 hover:underline">← 사원 목록으로</a>
+    </div>
+
+    <!-- 직책 신설 폼: 화면흐름도상 "생성" 버튼을 누르면 같은 화면(HR-003)에 머무른다 -->
+    <div class="bg-white shadow-sm border border-slate-200 p-6 mb-6">
+        <form th:action="@{/hr/positions}" th:object="${positionForm}" method="post" class="flex items-end gap-3">
+            <div class="flex-1">
+                <label for="positionName" class="block text-sm font-semibold text-slate-700 mb-2">새 직책명</label>
+                <input type="text" id="positionName" th:field="*{positionName}" required placeholder="예: 대리"
+                       class="w-full h-11 px-4 border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600">
+            </div>
+            <button type="submit"
+                    class="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors">
+                등록
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+                <th class="p-3 text-left font-semibold text-slate-600">직책명</th>
+                <th class="p-3 text-left font-semibold text-slate-600">사용 여부</th>
+                <th class="p-3 text-left font-semibold text-slate-600">등록일시</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- 빈 상태: 화면설계서 5.공통 UI 규칙 - "등록된 데이터가 없습니다" 안내 (빈 화면 금지) -->
+            <tr th:if="${#lists.isEmpty(positions)}">
+                <td colspan="3" class="p-6 text-center text-slate-400">등록된 데이터가 없습니다.</td>
+            </tr>
+            <tr th:each="position : ${positions}" class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <td class="p-3 text-slate-900" th:text="${position.positionName}">대리</td>
+                <td class="p-3">
+                    <span th:if="${position.active}" class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">사용</span>
+                    <span th:unless="${position.active}" class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-600">미사용</span>
+                </td>
+                <td class="p-3 text-slate-700" th:text="${#temporals.format(position.createdAt, 'yyyy-MM-dd')}">2026-01-01</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+</body>
+</html>
