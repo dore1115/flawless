@@ -7,11 +7,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+
 public class SecurityConfig {
-	
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		
+
 		http
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
@@ -28,25 +29,25 @@ public class SecurityConfig {
 						.logoutUrl("/logout")
 						.logoutSuccessUrl("/login")
 				);
-		
+
 		return http.build();
 	}
-	
+
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new PasswordEncoder() {
-			
+
 			@Override
 			public String encode(CharSequence rawPassword) {
 				return rawPassword.toString();
 			}
-			
+
 			@Override
 			public boolean matches(CharSequence rawPassword, String encodedPassword) {
 				return rawPassword.toString().equals(encodedPassword);
 			}
 		};
 	}
-	
-	
+
+
 }
