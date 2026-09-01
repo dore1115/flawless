@@ -1,50 +1,37 @@
 package com.dsa.flawless.domain;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name="employee")
-@Getter
-@Setter
+@Data
+@Table(
+    uniqueConstraints = @UniqueConstraint(columnNames = {"username"})
+)
 public class Employee {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	
-	@Column(nullable = false, unique = true, length = 50)
-	private String username;
-	
-	@Column(nullable = false, length = 255)
-	private String password;
-	
-	@Column(nullable = false, length = 30)
-	private String name;
-	
-	@Column(nullable = false, length = 200)
-	private String address;
-	
-	@Column(nullable = false, length = 100, unique = true)
-	private String email;
-	
-	@Column(nullable = false, length = 20)
-	private String phone;
-	
-	@JoinColumn(name = "department_id") @ManyToOne(fetch = FetchType.EAGER)
-	private Department department;
-	
-	@JoinColumn(name = "position_id") @ManyToOne(fetch = FetchType.EAGER)
-	private Position position;
-	
-	@Column(nullable = false, length = 20) @Enumerated(EnumType.STRING)
-	private Role role;
-	
-	@Column(name = "created_at", nullable = false)
-	private LocalDateTime createdAt;
-	
-	@Column(name = "updated_at")
-	private LocalDateTime updatedAt;
-	
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(length = 50)
+    private String username;
+    @Column(nullable = false)
+    private String password;
+    @Column(length = 30, nullable = false)
+    private String name;
+    @Column(length = 200, nullable = false)
+    private String address;
+    @Column(length = 100, nullable = false)
+    private String email;
+    @Column(length = 20, nullable = false)
+    private String phone;
+    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    private Role role = Role.EMPLOYEE;
+    @CreationTimestamp @Column(nullable = false)
+    private LocalDateTime createdAt;
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
 }
