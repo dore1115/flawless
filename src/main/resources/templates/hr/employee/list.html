@@ -1,0 +1,66 @@
+<!--
+  templates/hr/employee/list.html
+  화면 ID: HR-001 (사원 목록)
+  대응 Controller: EmployeeController.list() [GET /hr/employees]
+  관련 요구사항: REQ-F-M-004(사원 정보 단일 변경) — 이 화면에서 사원을 선택해 HR-002(정보 조회·수정)로 이동한다.
+  접근 권한: 인사관리자
+  ※ REQ-NF-G-003(전역 인가 아키텍처 부재) / REQ-NF-H-004(직책·부서 단일 변경 Authority 미비, IDOR) 결함 시딩으로
+    인해 현재는 로그인 여부와 무관하게 이 화면·기능에 접근할 수 있다. 결함 재현·측정 후 인사관리자 인증 미들웨어 추가 예정.
+  Model 속성: employees(List<Employee>)
+-->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사원 목록 | Enterprise Resource Planning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100">
+
+<!-- 헤더: 화면설계서 5.공통 UI 규칙 - 헤더/콘텐츠/푸터 3단, 최대 너비 1200px -->
+<header class="bg-blue-800">
+    <div class="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
+        <h1 class="text-white font-bold text-lg">Enterprise Resource Planning</h1>
+        <span class="text-blue-200 text-sm">인사관리 &gt; 사원 목록</span>
+    </div>
+</header>
+
+<main class="max-w-[1200px] mx-auto px-6 py-10">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-slate-900">사원 목록</h2>
+    </div>
+
+    <div class="bg-white shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+                <th class="p-3 text-left font-semibold text-slate-600">이름</th>
+                <th class="p-3 text-left font-semibold text-slate-600">부서</th>
+                <th class="p-3 text-left font-semibold text-slate-600">직책</th>
+                <th class="p-3 text-left font-semibold text-slate-600">권한</th>
+                <th class="p-3"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- 빈 상태: 화면설계서 5.공통 UI 규칙 - "등록된 데이터가 없습니다" 안내 (빈 화면 금지) -->
+            <tr th:if="${#lists.isEmpty(employees)}">
+                <td colspan="5" class="p-6 text-center text-slate-400">등록된 데이터가 없습니다.</td>
+            </tr>
+            <tr th:each="employee : ${employees}" class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <td class="p-3 text-slate-900" th:text="${employee.name}">홍길동</td>
+                <td class="p-3 text-slate-700" th:text="${employee.department != null ? employee.department.departmentName : '-'}">부서</td>
+                <td class="p-3 text-slate-700" th:text="${employee.position != null ? employee.position.positionName : '-'}">직책</td>
+                <td class="p-3 text-slate-700" th:text="${employee.role}">EMPLOYEE</td>
+                <td class="p-3 text-right">
+                    <a th:href="@{'/hr/employees/' + ${employee.id} + '/info'}"
+                       class="inline-block text-sm font-medium text-blue-600 hover:underline">정보 관리</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+</body>
+</html>
