@@ -8,7 +8,7 @@ import lombok.Data;
 @Table(
         uniqueConstraints = @UniqueConstraint(columnNames = {"attendance_id"})
 )
-public class Reason {
+public class Reason extends BaseTimeEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @ManyToOne(fetch = FetchType.EAGER) @JoinColumn(name="attendance_id")

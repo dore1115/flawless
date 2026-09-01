@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(
@@ -13,7 +12,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor
-public class Employee{
+public class Employee extends BaseTimeEntity{
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -44,12 +43,6 @@ public class Employee{
 
 	@Column(nullable = false, length = 20) @Enumerated(EnumType.STRING)
 	private Role role;
-
-	@Column(name = "created_at", nullable = false)
-	private LocalDateTime createdAt;
-
-	@Column(name = "updated_at")
-	private LocalDateTime updatedAt;
 
 	@Builder
 	public Employee(String username, String password, String name, String address, String email,

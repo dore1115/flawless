@@ -17,7 +17,7 @@ import java.time.LocalDate;
         name = "attendance",
         uniqueConstraints = @UniqueConstraint(columnNames = {"employee_id"})
 )
-public class Attendance {
+public class Attendance extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
