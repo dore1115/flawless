@@ -1,7 +1,7 @@
 package com.dsa.flawless.controller;
 
 import com.dsa.flawless.dto.DepartmentCreateForm;
-import com.dsa.flawless.service.DepartmentInUseException;
+import com.dsa.flawless.exception.DepartmentInUseException;
 import com.dsa.flawless.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;

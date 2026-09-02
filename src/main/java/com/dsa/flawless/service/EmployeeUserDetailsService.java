@@ -1,12 +1,10 @@
-package com.dsa.flawless.config;
+package com.dsa.flawless.service;
 
+import com.dsa.flawless.config.EmployeeUserDetails;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.repository.EmployeeRepository;
-import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.extern.slf4j.XSlf4j;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

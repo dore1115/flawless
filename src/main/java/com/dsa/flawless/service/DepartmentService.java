@@ -2,6 +2,7 @@ package com.dsa.flawless.service;
 
 import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.Employee;
+import com.dsa.flawless.exception.DepartmentInUseException;
 import com.dsa.flawless.repository.DepartmentRepository;
 import com.dsa.flawless.repository.EmployeeRepository;
 import java.util.List;

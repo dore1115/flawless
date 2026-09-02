@@ -1,4 +1,4 @@
-package com.dsa.flawless.service;
+package com.dsa.flawless.exception;
 
 import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.Employee;

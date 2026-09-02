@@ -2,6 +2,7 @@ package com.dsa.flawless.service;
 
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Position;
+import com.dsa.flawless.exception.PositionInUseException;
 import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.repository.PositionRepository;
 import java.util.List;
