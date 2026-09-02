@@ -1,6 +1,6 @@
-package com.dsa.flawless.inventory.repository;
+package com.dsa.flawless.repository;
 
-import com.dsa.flawless.inventory.entity.Item;
+import com.dsa.flawless.domain.Item;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

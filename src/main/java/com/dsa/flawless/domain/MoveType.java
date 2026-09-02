@@ -1,4 +1,4 @@
-package com.dsa.flawless.inventory.entity;
+package com.dsa.flawless.domain;
 
 /**
  * 재고 입출고 이력(stock_history)의 "구분" 값.

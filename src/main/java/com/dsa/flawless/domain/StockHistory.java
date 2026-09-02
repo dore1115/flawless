@@ -1,6 +1,5 @@
-package com.dsa.flawless.inventory.entity;
+package com.dsa.flawless.domain;
 
-import com.dsa.flawless.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

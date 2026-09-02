@@ -1,8 +1,8 @@
-package com.dsa.flawless.inventory.controller;
+package com.dsa.flawless.controller;
 
-import com.dsa.flawless.inventory.dto.InboundRequestDto;
-import com.dsa.flawless.inventory.exception.ItemNotFoundException;
-import com.dsa.flawless.inventory.service.InventoryService;
+import com.dsa.flawless.dto.InboundRequestDto;
+import com.dsa.flawless.exception.ItemNotFoundException;
+import com.dsa.flawless.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;

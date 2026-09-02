@@ -1,4 +1,4 @@
-package com.dsa.flawless.inventory.exception;
+package com.dsa.flawless.exception;
 
 /**
  * 요청받은 품목이 존재하지 않거나(등록되지 않았거나) 이미 삭제(비활성화)되어
