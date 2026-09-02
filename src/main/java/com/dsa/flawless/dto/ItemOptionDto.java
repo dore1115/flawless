@@ -1,6 +1,6 @@
-package com.dsa.flawless.inventory.dto;
+package com.dsa.flawless.dto;
 
-import com.dsa.flawless.inventory.entity.Item;
+import com.dsa.flawless.domain.Item;
 import lombok.Getter;
 
 /**

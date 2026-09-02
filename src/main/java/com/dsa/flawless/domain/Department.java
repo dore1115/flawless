@@ -37,4 +37,13 @@ public class Department extends BaseTimeEntity {
         this.departmentName = departmentName;
         this.active = true;
     }
+
+    /**
+     * REQ-F-S-008(부서 삭제): 물리 삭제 대신 is_active를 0으로 전환한다(soft delete).
+     * 소속 사원이 남아있는지 확인하는 책임은 서비스 계층({@link com.dsa.flawless.service.DepartmentService})에
+     * 있다 — 이 메서드 자체는 무조건 비활성화만 수행한다.
+     */
+    public void deactivate() {
+        this.active = false;
+    }
 }

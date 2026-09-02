@@ -1,7 +1,7 @@
-package com.dsa.flawless.inventory.repository;
+package com.dsa.flawless.repository;
 
-import com.dsa.flawless.inventory.entity.MoveType;
-import com.dsa.flawless.inventory.entity.StockHistory;
+import com.dsa.flawless.domain.MoveType;
+import com.dsa.flawless.domain.StockHistory;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

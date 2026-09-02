@@ -1,6 +1,6 @@
-package com.dsa.flawless.inventory.dto;
+package com.dsa.flawless.dto;
 
-import com.dsa.flawless.inventory.entity.StockHistory;
+import com.dsa.flawless.domain.StockHistory;
 import java.time.LocalDateTime;
 import lombok.Getter;
 
