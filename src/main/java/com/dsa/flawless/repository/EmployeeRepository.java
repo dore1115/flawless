@@ -4,7 +4,6 @@ import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Position;
 import org.springframework.data.jpa.repository.JpaRepository;
-
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

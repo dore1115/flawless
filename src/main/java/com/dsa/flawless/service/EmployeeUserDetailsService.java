@@ -20,19 +20,18 @@ public class EmployeeUserDetailsService implements UserDetailsService {
 	@Override
 	public UserDetails loadUserByUsername(String username)
 			throws UsernameNotFoundException {
-
 		
 		Employee employee = employeeRepository.findByUsername(username)
 				.orElseThrow(() -> {
-					System.out.println("===== 사용자 없음 =====");
-					System.out.println("조회한 username = " + username);
+					log.info("===== 사용자 없음 =====");
+					log.info("조회한 username = {}", username);
 					return new UsernameNotFoundException("사용자를 찾을 수 없습니다.");
 				});
 		
-		System.out.println("===== 사용자 찾음 =====");
-		System.out.println("username = " + employee.getUsername());
-		System.out.println("password = " + employee.getPassword());
-		System.out.println("role = " + employee.getRole());
+		log.info("===== 사용자 찾음 =====");
+		log.info("username = {}", employee.getUsername());
+		log.info("password = {}", employee.getPassword());
+		log.info("role = {}", employee.getRole());
 		
 		return new EmployeeUserDetails(employee);
 	}
