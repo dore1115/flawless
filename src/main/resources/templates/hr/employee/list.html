@@ -36,11 +36,9 @@
             <!-- 화면흐름도: 사원 목록(HR-001) "부서 관리" 버튼 클릭 → 부서 목록(HR-004) -->
             <a th:href="@{/hr/departments}"
                class="h-9 px-4 inline-flex items-center bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">부서 관리</a>
-            <!-- "사원 생성"은 빈 껍데기(플레이스홀더) 버튼이다. 실제 사원 등록은 로그인 담당 팀원의
-                 회원가입(AuthController) 기능 범위이고, 아직 실제 등록 화면·POST 처리가 없어서
-                 어디로도 연결하지 않는다. 나중에 담당 기능이 정해지면 href/동작을 채워 넣으면 된다. -->
-            <button type="button" disabled title="추후 연결 예정"
-                    class="h-9 px-4 inline-flex items-center bg-slate-200 text-slate-400 rounded-md text-sm font-medium cursor-not-allowed">사원 생성</button>
+            <!-- 화면흐름도: 사원 목록(HR-001) "사원 생성" 버튼 클릭 → 사원 등록 화면 (REQ-F-S-004) -->
+            <a th:href="@{/admin/members/register}"
+               class="h-9 px-4 inline-flex items-center bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700">사원 생성</a>
         </div>
     </div>
 

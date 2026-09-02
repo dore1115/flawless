@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사원 계정 등록</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<!-- 상단 헤더 -->
+<header class="bg-[#0b192c] h-[60px] flex items-center px-8">
+    <span class="text-white font-bold text-base">ERP SYSTEM · 관리자 콘솔</span>
+    <span class="ml-4 bg-blue-700 text-white text-[11px] font-bold px-3 py-1 rounded-full">ROLE_ADMIN</span>
+    <span class="ml-auto text-slate-400 text-sm">사원 관리 &gt; 신규 등록</span>
+</header>
+
+<main class="max-w-5xl mx-auto bg-white shadow-sm mt-20 mb-12 px-12 py-10">
+
+    <!-- 페이지 타이틀 -->
+    <div class="pb-6 mb-8 border-b border-slate-100">
+        <h1 class="text-xl font-bold text-slate-900">사원 계정 등록 <span class="text-slate-400 font-normal text-base">(REQ-F-S-004)</span></h1>
+    </div>
+
+    <p th:if="${errorMessage}" th:text="${errorMessage}"
+       class="mb-6 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3"></p>
+
+    <form th:action="@{/admin/members}" method="post">
+        <div class="grid grid-cols-2 gap-x-10 gap-y-6">
+
+            <!-- 왼쪽 컬럼 -->
+            <div class="space-y-6">
+
+                <!-- 아이디 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        아이디 (username) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" name="username" placeholder="아이디 입력 (중복 불가)"
+                               class="flex-1 h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        <button type="button"
+                                class="px-4 h-11 rounded-md bg-slate-200 text-slate-600 text-xs font-semibold whitespace-nowrap hover:bg-slate-300">
+                            중복 확인
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 임시 비밀번호 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        임시 비밀번호 (password) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="password" name="password"
+                               class="flex-1 h-11 rounded-md border border-slate-300 px-4 text-sm font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        <button type="button" onclick="generatePassword()"
+                                class="px-5 h-11 rounded-md bg-blue-50 border border-blue-200 text-blue-600 text-sm font-semibold whitespace-nowrap hover:bg-blue-100">
+                            자동 생성
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 이름 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        이름 (name) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="name" placeholder="홍길동"
+                           class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+
+                <!-- 이메일 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        이메일 (email) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="email" name="email" placeholder="gildong@company.com"
+                           class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+            </div>
+
+            <!-- 오른쪽 컬럼 -->
+            <div class="space-y-6">
+
+                <!-- 휴대폰 번호 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        휴대폰 번호 (phone) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="phone" placeholder="010-1234-5678"
+                           class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+
+                <!-- 주소 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        주소 (address)
+                    </label>
+                    <input type="text" name="address" placeholder="서울특별시 강남구 테헤란로 123"
+                           class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+
+                <!-- 부서 & 직책 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- TODO: Department 엔티티 완성되면 <select>로 교체, name="departmentId" 유지 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                            부서 (department) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" name="departmentId" placeholder="부서 ID (임시)"
+                               class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <!-- TODO: Position 엔티티 완성되면 <select>로 교체, name="positionId" 유지 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                            직책 (position) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" name="positionId" placeholder="직책 ID (임시)"
+                               class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                </div>
+
+                <!-- 권한 -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        권한 (role) <span class="text-red-500">*</span>
+                    </label>
+                    <select name="role"
+                            class="w-full h-11 rounded-md border border-slate-300 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option th:each="r : ${roleOptions}" th:value="${r}" th:text="${r}"></option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 구분선 + 등록 버튼 -->
+        <div class="mt-10 pt-8 border-t border-slate-100 flex justify-center">
+            <button type="submit"
+                    class="w-[300px] h-12 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                사원 계정 등록
+            </button>
+        </div>
+    </form>
+</main>
+
+<script>
+    function generatePassword() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        let password = "";
+        for (let i = 0; i < 10; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('password').value = password;
+    }
+</script>
+</body>
+</html>
