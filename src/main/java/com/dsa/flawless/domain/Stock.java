@@ -63,4 +63,18 @@ public class Stock extends BaseTimeEntity {
     public void increase(int amount) {
         this.quantity += amount;
     }
+
+    /*
+     * [출고 기능(REQ-F-M-006) 추가 시 이 메서드를 새로 추가함]
+     * 이유: increase()와 대칭되는 "줄이는" 동작이 이 엔티티에 아직 없어서, 출고 처리를
+     *      구현하려면 반드시 필요했음(재고 수량 변경 로직을 서비스가 아니라 엔티티가
+     *      책임지는 기존 설계 방침을 그대로 따름).
+     * 방법: increase()와 똑같은 형태로, 수량을 amount만큼 빼는 코드만 추가함.
+     *      "재고보다 많이 출고하면 안 된다"는 검증은 여기서 하지 않고 InventoryService.outbound()에서
+     *      미리 확인한 뒤에만 이 메서드를 호출하도록 함(increase()가 "얼마나 늘릴지는 서비스가 결정"
+     *      하는 방식과 동일하게, "출고 가능한지 판단"은 서비스 책임으로 남겨둠).
+     */
+    public void decrease(int amount) {
+        this.quantity -= amount;
+    }
 }

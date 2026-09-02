@@ -1,10 +1,15 @@
 package com.dsa.flawless.controller;
 
+import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.dto.InboundRequestDto;
+import com.dsa.flawless.dto.OutboundRequestDto;
+import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
+import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,12 +21,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * 재고 관련 화면/처리를 담당하는 컨트롤러.
- * 지금은 "재고 입고 처리(IV-003)" 기능만 구현.
- * (품목 관리 IV-001, 재고 조회 IV-002, 출고 IV-004, 이력 IV-005는 이후 별도 작업)
+ * 지금은 "재고 입고 처리(IV-003)"와 "재고 출고 처리(IV-004)" 기능이 구현되어 있음.
+ * (품목 관리 IV-001, 재고 조회 IV-002, 이력 IV-005는 이후 별도 작업)
  *
  * 화면설계서 3-1. URL·Controller 목록 표 기준:
- *   GET  /inventory/inbound  → inboundForm()  → inventory/inbound.html
- *   POST /inventory/inbound  → inbound()      → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
+ *   GET  /inventory/inbound   → inboundForm()   → inventory/inbound.html
+ *   POST /inventory/inbound   → inbound()       → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
+ *   GET  /inventory/outbound  → outboundForm()  → inventory/outbound.html
+ *   POST /inventory/outbound  → outbound()      → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
  */
 @Controller
 @RequestMapping("/inventory")
@@ -29,6 +36,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+
+    // [출고 기능(REQ-F-M-006) 추가 시 새로 주입함]
+    // 이유: "처리한 사원"을 기록하려면 지금 로그인한 사원의 id가 필요한데, 로그인 기능이
+    //      완성되면서 EmployeeRepository로 실제 로그인한 사원을 조회할 수 있게 됐음.
+    //      그래서 출고 처리부터는 예전 입고 처리처럼 employeeId를 1로 고정하지 않고,
+    //      실제 로그인한 사원의 id를 사용함(아래 outbound() 메서드 참고).
+    private final EmployeeRepository employeeRepository;
 
     /**
      * IV-003 재고 입고 폼 화면을 보여줌.
@@ -92,6 +106,81 @@ public class InventoryController {
         // 3) 성공 시: 화면설계서 화면 흐름도에 따라 "재고 조회(IV-002, /inventory/items)"로 이동.
         //    addFlashAttribute는 리다이렉트 "다음 한 번의 요청"에만 살아있는 메시지를 전달할 때 사용.
         redirectAttributes.addFlashAttribute("message", "입고 처리가 완료되었습니다.");
+        return "redirect:/inventory/items";
+    }
+
+    /*
+     * ================================================================
+     * 아래부터는 재고 출고 처리(REQ-F-M-006) 기능을 위해 새로 추가한 부분임.
+     * 위 입고 컨트롤러 메서드 두 개와 최대한 같은 구조로 작성함.
+     * ================================================================
+     */
+
+    /**
+     * IV-004 재고 출고 폼 화면을 보여줌.
+     * itemOptions(현재 재고 수량이 함께 담긴 품목 선택 목록)와 recentOutbound(최근 출고 이력 5건)를
+     * 함께 내려줌.
+     */
+    @GetMapping("/outbound")
+    public String outboundForm(Model model) {
+        model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
+        model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
+
+        if (!model.containsAttribute("outboundRequestDto")) {
+            model.addAttribute("outboundRequestDto", new OutboundRequestDto());
+        }
+        return "inventory/outbound";
+    }
+
+    /**
+     * IV-004 재고 출고 처리.
+     *
+     * 화면설계서 "분기·실패 처리" 표 그대로 구현:
+     *   - 품목 미선택/미존재            → 화면 유지 + 필드 오류
+     *   - 수량 0 이하 또는 정수가 아님   → 화면 유지 + "1 이상의 수량을 입력해 주세요."
+     *   - 재고 부족                     → 화면 유지 + "재고가 부족하여 출고할 수 없습니다..." 오류
+     *   - 성공                          → redirect + 플래시 메시지 "출고 처리가 완료되었습니다."
+     */
+    @PostMapping("/outbound")
+    public String outbound(@Valid @ModelAttribute("outboundRequestDto") OutboundRequestDto requestDto,
+                            BindingResult bindingResult,
+                            Authentication authentication,
+                            RedirectAttributes redirectAttributes,
+                            Model model) {
+
+        // 1) 입력 형식 검증(수량 1 이상 등) 실패 → 폼 화면을 유지하면서 필드 오류를 함께 보여줌.
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
+            model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
+            return "inventory/outbound";
+        }
+
+        // 로그인 기능이 이제 완성되어 있어서, 입고 처리 때처럼 employeeId를 1로 고정하지 않고
+        // 현재 로그인한 사용자의 username(authentication.getName())으로 실제 사원을 조회해서 사용함.
+        Employee employee = employeeRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new IllegalStateException(
+                        "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + authentication.getName()));
+        Long employeeId = employee.getId();
+
+        try {
+            inventoryService.outbound(requestDto, employeeId);
+        } catch (ItemNotFoundException e) {
+            // 2) 품목이 없거나 비활성화된 경우 → itemId 필드에 오류를 등록하고 폼 화면을 유지.
+            bindingResult.rejectValue("itemId", "invalid", "품목을 선택해 주세요.");
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
+            model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
+            return "inventory/outbound";
+        } catch (InsufficientStockException e) {
+            // 3) 재고 부족 → quantity 필드에 오류를 등록하고 폼 화면을 유지.
+            //    e.getMessage()에 "현재 재고: N개"까지 담겨 있어 그대로 화면에 보여줌.
+            bindingResult.rejectValue("quantity", "invalid", e.getMessage());
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
+            model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
+            return "inventory/outbound";
+        }
+
+        // 4) 성공 시: 입고 처리와 동일하게 재고 조회(IV-002, /inventory/items)로 이동.
+        redirectAttributes.addFlashAttribute("message", "출고 처리가 완료되었습니다.");
         return "redirect:/inventory/items";
     }
 }

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<!--
+  IV-004 재고 출고 처리 화면
+
+  - 담당자님이 보내주신 디자인 시안(IV-004_stock_outbound) 그대로 옮김: 상단 남색 헤더 +
+    왼쪽 사이드바 + 오른쪽 흰색 카드. 레이아웃/색상 구성은 입고 화면(inbound.html)과 동일한
+    틀을 그대로 재사용함(같은 시스템이라는 통일감을 위해 팀 디자인 시안도 같은 틀을 쓰고 있음).
+  - 입고 화면 때와 마찬가지로, 카드(메인 영역) 너비를 w-full로 꽉 채워서 오른쪽에 빈 공간이
+    남지 않도록 함.
+  - 디자인 시안에는 품목을 고르면 그 옆에 "(현재 재고: N개)"가 보이는데, 이건 선택한 품목마다
+    다른 값이라 순수 HTML만으로는 표현이 안 되어서, 아주 짧은 자바스크립트로 품목 선택이
+    바뀔 때마다 옆의 안내 문구를 바꿔주도록 함(맨 아래 <script> 부분 참고). 이 프로젝트에
+    자바스크립트를 쓴 곳이 이전까지 없었는데, 이 기능 하나만은 순수 Thymeleaf로 구현할 방법이
+    없어서 예외적으로 사용함.
+-->
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>재고 출고 처리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen flex flex-col">
+
+    <!-- 상단 헤더: 짙은 남색 바. 시스템 이름 + 현재 위치(품목관리)를 보여줌 -->
+    <header class="bg-slate-900 text-white px-6 py-4 flex items-center shrink-0">
+        <span class="font-bold tracking-wide">ERP SYSTEM</span>
+        <span class="text-slate-400 ml-2">· 품목관리</span>
+    </header>
+
+    <div class="flex flex-1">
+
+        <!-- 왼쪽 사이드바 메뉴: 재고 조회 / 입고 / 출고(현재 화면) / 품목 관리 -->
+        <aside class="w-48 bg-white border-r border-gray-200 shrink-0 py-4 px-3">
+            <nav class="space-y-1 text-sm">
+                <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">재고 조회</a>
+                <a href="/inventory/inbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">입고</a>
+                <!-- 지금 만든 화면이라 파란색 배경으로 "현재 위치"를 표시 -->
+                <a href="/inventory/outbound" class="block px-3 py-2 rounded-md bg-blue-600 text-white font-medium">출고</a>
+                <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">품목 관리</a>
+            </nav>
+        </aside>
+
+        <!-- 오른쪽 메인 영역: 실제 출고 처리 폼이 들어가는 흰색 카드.
+             w-full로 메인 영역 너비에 꽉 차게 만들어서 오른쪽 빈 공간을 줄임(입고 화면과 동일). -->
+        <main class="flex-1 p-8">
+            <div class="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+
+                <h1 class="text-lg font-bold text-gray-900 mb-6">재고 출고 처리</h1>
+
+                <!-- 성공 후 리다이렉트되어 넘어온 플래시 메시지(성공 배너) -->
+                <div th:if="${message}" class="mb-4 rounded-md bg-green-100 text-green-800 px-4 py-2 text-sm" th:text="${message}"></div>
+
+                <form th:action="@{/inventory/outbound}" th:object="${outboundRequestDto}" method="post" class="space-y-5">
+
+                    <!-- 품목 선택 (필수) + 옆에 선택한 품목의 현재 재고 수량 안내 -->
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1" for="itemId">품목</label>
+                        <div class="flex items-center gap-3">
+                            <select id="itemId" th:field="*{itemId}"
+                                    class="flex-1 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onchange="updateCurrentStockHint()">
+                                <option value="">선택하세요</option>
+                                <!-- itemOptions: 삭제(비활성화)되지 않은 품목만 내려줌. th:attr로 각 option에
+                                     data-quantity(그 품목의 현재 재고 수량)를 심어둠 -> 아래 자바스크립트가 읽어감 -->
+                                <option th:each="item : ${itemOptions}"
+                                        th:value="${item.id}"
+                                        th:text="${item.name}"
+                                        th:attr="data-quantity=${item.quantity}"></option>
+                            </select>
+                            <!-- 자바스크립트가 이 span의 글자만 바꿔치기함(현재 재고: N개) -->
+                            <span id="currentStockHint" class="text-sm text-gray-500 whitespace-nowrap">현재 재고: -</span>
+                        </div>
+                        <p class="text-red-600 text-sm mt-1" th:if="${#fields.hasErrors('itemId')}" th:errors="*{itemId}"></p>
+                    </div>
+
+                    <!-- 출고 수량 (필수, 1 이상 정수) -->
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1" for="quantity">출고 수량</label>
+                        <input id="quantity" type="number" min="1" th:field="*{quantity}"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="0" />
+                        <!-- 재고 부족 오류(InsufficientStockException)도 이 필드 오류로 표시됨(컨트롤러 참고) -->
+                        <p class="text-red-600 text-sm mt-1" th:if="${#fields.hasErrors('quantity')}" th:errors="*{quantity}"></p>
+                    </div>
+
+                    <!-- 버튼 + 안내 문구를 한 줄에 나란히 배치(디자인 시안과 동일) -->
+                    <div class="flex items-center gap-3">
+                        <button type="submit"
+                                class="px-8 py-2.5 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700">
+                            출고 처리
+                        </button>
+                        <span class="text-sm text-gray-500">재고가 부족하면 처리되지 않습니다</span>
+                    </div>
+                </form>
+
+                <!-- 최근 출고 이력 5건 -->
+                <div class="mt-10">
+                    <h2 class="text-sm font-semibold text-gray-700 mb-3">최근 출고 이력</h2>
+
+                    <p th:if="${#lists.isEmpty(recentOutbound)}" class="text-gray-400 text-sm">최근 출고 이력이 없습니다.</p>
+
+                    <ul th:unless="${#lists.isEmpty(recentOutbound)}" class="text-sm">
+                        <li th:each="h : ${recentOutbound}"
+                            class="grid gap-x-8 py-1 items-center" style="grid-template-columns: 1fr auto auto;">
+                            <span class="text-gray-800" th:text="${h.itemName}"></span>
+                            <!-- 입고 이력은 초록색 +N, 출고 이력은 빨간색 -N으로 구분(디자인 시안 색상 그대로) -->
+                            <span class="text-red-600 font-medium text-right" th:text="'-' + ${h.quantity}"></span>
+                            <span class="text-gray-400" th:text="${#temporals.format(h.processedAt, 'MM/dd HH:mm')}"></span>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<!--
+  품목 선택 드롭다운의 값이 바뀔 때마다, 그 옆의 "현재 재고: N개" 문구를 갱신하는 스크립트.
+  서버에 다시 요청을 보내지 않고(=페이지를 새로고침하지 않고), 이미 화면에 내려받아 각
+  <option>에 심어둔 data-quantity 값만 읽어서 화면 글자만 바꿔치기하는 아주 단순한 코드임.
+-->
+<script>
+    function updateCurrentStockHint() {
+        var select = document.getElementById('itemId');
+        var hint = document.getElementById('currentStockHint');
+        var selectedOption = select.options[select.selectedIndex];
+        var quantity = selectedOption.getAttribute('data-quantity');
+
+        if (quantity === null) {
+            // "선택하세요" 기본 옵션(값 없음)을 고른 경우
+            hint.textContent = '현재 재고: -';
+        } else {
+            hint.textContent = '현재 재고: ' + quantity + '개';
+        }
+    }
+</script>
+
+</body>
+</html>
