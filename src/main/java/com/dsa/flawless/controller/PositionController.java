@@ -1,7 +1,7 @@
 package com.dsa.flawless.controller;
 
 import com.dsa.flawless.dto.PositionCreateForm;
-import com.dsa.flawless.service.PositionInUseException;
+import com.dsa.flawless.exception.PositionInUseException;
 import com.dsa.flawless.service.PositionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
