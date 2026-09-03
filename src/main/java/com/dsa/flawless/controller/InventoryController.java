@@ -8,12 +8,15 @@ import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.InventoryService;
 import jakarta.validation.Valid;
+import java.beans.PropertyEditorSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +46,25 @@ public class InventoryController {
     //      그래서 출고 처리부터는 예전 입고 처리처럼 employeeId를 1로 고정하지 않고,
     //      실제 로그인한 사원의 id를 사용함(아래 outbound() 메서드 참고).
     private final EmployeeRepository employeeRepository;
+
+    /**
+     * [버그 수정] 품목을 선택 안 하고 입고 처리를 누르면 빈 값이 그대로 넘어오는데,
+     * itemId가 Long 타입이라 빈 값을 숫자로 못 바꿔서 오류 화면이 뜨던 문제를 고침.
+     * 빈 값이면 그냥 null로 처리해서, 원래 있던 "품목을 선택해 주세요." 메시지가 뜨게 함.
+     */
+    @InitBinder("inboundRequestDto")
+    public void initInboundBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(Long.class, "itemId", new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                if (text == null || text.isBlank()) {
+                    setValue(null);
+                } else {
+                    setValue(Long.valueOf(text));
+                }
+            }
+        });
+    }
 
     /**
      * IV-003 재고 입고 폼 화면을 보여줌.
@@ -115,6 +137,25 @@ public class InventoryController {
      * 위 입고 컨트롤러 메서드 두 개와 최대한 같은 구조로 작성함.
      * ================================================================
      */
+
+    /**
+     * [버그 수정] 품목을 선택 안 하고 출고 처리를 누르면 빈 값이 그대로 넘어오는데,
+     * itemId가 Long 타입이라 빈 값을 숫자로 못 바꿔서 오류 화면이 뜨던 문제를 고침.
+     * 빈 값이면 그냥 null로 처리해서, 원래 있던 "품목을 선택해 주세요." 메시지가 뜨게 함.
+     */
+    @InitBinder("outboundRequestDto")
+    public void initOutboundBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(Long.class, "itemId", new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                if (text == null || text.isBlank()) {
+                    setValue(null);
+                } else {
+                    setValue(Long.valueOf(text));
+                }
+            }
+        });
+    }
 
     /**
      * IV-004 재고 출고 폼 화면을 보여줌.
