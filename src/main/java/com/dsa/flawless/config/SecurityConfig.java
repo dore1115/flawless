@@ -7,18 +7,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-
 public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
 		http
+				.csrf((csrf) ->csrf.disable())
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/login").permitAll() // login은 누구나 접근 가능
 						.anyRequest() // 그 외 모든 요청
-						.authenticated() //! REQ-NF-G-003으로 인하여 인가 아키텍쳐는 추후 적용
+						.permitAll() //! REQ-NF-G-003으로 인하여 인가 아키텍쳐는 추후 적용
 				)
 				.formLogin(form -> form
 						.loginPage("/login")
