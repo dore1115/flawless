@@ -108,11 +108,21 @@ public class InventoryController {
             return "inventory/inbound";
         }
 
-        // TODO(권한 확인): 화면설계서상 이 화면은 "물류관리자 전용"이지만,
-        // 이 저장소에는 아직 로그인/Employee/Spring Security 인가 설정이 없음.
-        // REQ-NF-I-002(권한 검증 부재)에 해당하는 부분으로, 로그인 기능이 합쳐지면
-        // 아래 employeeId를 세션의 실제 사용자 id로 바꾸고, 물류관리자가 아니면 403을 반환하도록
-        // 인가 로직 추가 필요. 지금은 기능 동작 확인을 위한 임시값을 작성해둠.
+        // [REQ-NF-I-002] 비기능요구사항 결함: "품목 등록/수정/삭제, 재고 정보 삭제" API에 물류관리자 권한 검증이 빠져 있음
+        //   - 증상: 화면설계서상 이 입고 화면은 "물류관리자 전용"인데, 지금은 로그인만 되어 있으면
+        //     어떤 사원이든(직급 무관) 이 API를 그대로 호출해 정상 처리됨. 게다가 이 메서드는
+        //     로그인 사원이 누구인지조차 확인하지 않고 employeeId를 1로 고정해둔 상태임(출고 처리는
+        //     이미 로그인 사원을 조회하도록 고쳐져 있음 - 아래 outbound() 메서드 참고).
+        //   - 해결 방법:
+        //     1) (우선 적용 가능) outbound()처럼 employeeRepository.findByUsername(authentication
+        //        .getName())으로 로그인 사원을 먼저 조회하고, 그 사원의 Role이 물류관리자인지 직접
+        //        확인해서 아니면 예외(예: AccessDeniedException)를 던져 403으로 응답하도록 고침.
+        //     2) (근본 해결) REQ-NF-G-003(전역 인가 아키텍처 부재)이 먼저 해결된 뒤, SecurityConfig에
+        //        "/inventory/inbound", "/inventory/outbound", "/inventory"(POST) 등을
+        //        hasRole("LOGISTICS_MANAGER")로 제한하는 규칙을 추가하면 컨트롤러마다 따로 권한
+        //        코드를 넣지 않아도 됨(요구사항정의서 비고: "G3가 먼저 갖춰지면 근본적으로 해결됨").
+        //   - 지금은 의도적으로 미적용 상태로 남겨둔 결함이라 고치지 않았고, 로그인 사원 조회조차
+        //     안 해서 임시로 employeeId=1L을 그대로 씀.
         Long employeeId = 1L;
 
         try {
@@ -202,6 +212,10 @@ public class InventoryController {
                 .orElseThrow(() -> new IllegalStateException(
                         "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + authentication.getName()));
         Long employeeId = employee.getId();
+
+        // [REQ-NF-I-002] "누가 로그인했는지"는 위에서 정확히 알아내지만, "이 사원이 물류관리자인지"는
+        // 확인하지 않아서 아무 사원이나 출고 처리가 가능한 상태임(증상/해결 방법은 위 inbound() 메서드의
+        // employeeId 선언부 주석에 자세히 적어둠 - 같은 결함, 같은 해결 방법이 그대로 적용됨).
 
         try {
             inventoryService.outbound(requestDto, employeeId);

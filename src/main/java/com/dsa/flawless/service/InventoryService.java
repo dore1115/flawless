@@ -178,6 +178,9 @@ public class InventoryService {
                         "등록되지 않았거나 비활성화된 품목입니다. itemId=" + request.getItemId()));
 
         // 2) 현재 재고 수량 확인. 재고 기록 자체가 없으면 0개로 취급함(위 처리 순서 설명 참고).
+        // [REQ-NF-I-005] 아래 "조회(findByItemId) → 비교 → 차감(decrease) → 저장" 구간은 락이 없어서
+        // 동시 요청에 안전하지 않음 - 이 메서드 전체가 그 결함의 실제 발생 지점임. 증상과 해결 방법
+        // (낙관적/비관적 락)은 Stock.java의 주석 처리된 @Version 필드 위 주석에 자세히 적어둠.
         Stock stock = stockRepository.findByItemId(item.getId()).orElse(null);
         int currentQuantity = (stock != null) ? stock.getQuantity() : 0;
 
