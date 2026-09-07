@@ -3,10 +3,14 @@ package com.dsa.flawless.service;
 import com.dsa.flawless.dto.InboundHistoryDto;
 import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.ItemOptionDto;
+import com.dsa.flawless.dto.OutboundHistoryDto;
+import com.dsa.flawless.dto.OutboundItemOptionDto;
+import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.domain.Item;
 import com.dsa.flawless.domain.MoveType;
 import com.dsa.flawless.domain.Stock;
 import com.dsa.flawless.domain.StockHistory;
+import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.repository.ItemRepository;
 import com.dsa.flawless.repository.StockHistoryRepository;
@@ -19,8 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 재고 입고 처리(REQ-F-M-005)의 실제 비즈니스 로직을 담당하는 서비스 클래스.
- * Controller는 "요청을 받아서 넘겨주는 역할"만 하고, 실제 판단/저장 로직은 여기서 처리.
+ * 재고 입고 처리(REQ-F-M-005) 및 재고 출고 처리(REQ-F-M-006)의 실제 비즈니스 로직을
+ * 담당하는 서비스 클래스. Controller는 "요청을 받아서 넘겨주는 역할"만 하고,
+ * 실제 판단/저장 로직은 여기서 처리.
  *
  * @RequiredArgsConstructor: Lombok이 final 필드(itemRepository 등)를 매개변수로 받는
  * 생성자를 자동으로 만들어줌. 스프링이 그 생성자를 통해 의존성을 주입(DI).
@@ -101,6 +106,100 @@ public class InventoryService {
         // 3) 입출고 이력을 남김. 위 stock.save()와 이 save()는 같은 @Transactional 메서드
         //    안에서 실행되므로, 둘 다 성공해야만 최종적으로 커밋.
         StockHistory history = new StockHistory(item, MoveType.IN, request.getQuantity(), employeeId);
+        stockHistoryRepository.save(history);
+    }
+
+    /*
+     * ================================================================
+     * 아래부터는 재고 출고 처리(REQ-F-M-006) 기능을 위해 새로 추가한 메서드임.
+     * 입고 쪽 메서드(위)와 최대한 같은 구조/스타일로 작성해서 나중에 봤을 때
+     * "입고랑 대칭되는 코드다"라는 걸 바로 알아볼 수 있게 함.
+     * ================================================================
+     */
+
+    /**
+     * 출고 폼(IV-004)의 "품목 선택" 목록을 가져옴.
+     * 화면설계서 시안에 "선택한 품목의 현재 재고 수량"을 같이 보여주는 부분이 있어서,
+     * 입고 화면의 getActiveItemOptions()와 달리 품목마다 현재 재고 수량도 같이 담아 내려줌.
+     *
+     * 품목 하나하나마다 재고를 따로 조회하는 방식(N+1 조회)이라 데이터가 아주 많아지면
+     * 느려질 수 있는 방식이지만, 지금 프로젝트 규모에서는 문제되지 않아 단순하게 구현함
+     * (프로젝트 방침: 완벽한 성능보다 이해하기 쉬운 코드를 우선함).
+     */
+    @Transactional(readOnly = true)
+    public List<OutboundItemOptionDto> getActiveItemOptionsWithStock() {
+        return itemRepository.findAllByDeletedFalse().stream()
+                .map(item -> {
+                    // 재고 기록이 없는 품목은 0개로 취급(REQ-F-M-006: 출고는 재고 기록을 자동 생성하지 않음)
+                    int currentQuantity = stockRepository.findByItemId(item.getId())
+                            .map(Stock::getQuantity)
+                            .orElse(0);
+                    return new OutboundItemOptionDto(item, currentQuantity);
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 출고 폼에 참고로 보여줄 "최근 출고 이력 5건"을 가져옴.
+     * getRecentInboundHistories()와 똑같은 방식이고, MoveType만 IN 대신 OUT으로 바꿔서 조회함.
+     */
+    @Transactional(readOnly = true)
+    public List<OutboundHistoryDto> getRecentOutboundHistories() {
+        return stockHistoryRepository
+                .findByMoveTypeOrderByCreatedAtDesc(MoveType.OUT, PageRequest.of(0, 5))
+                .stream()
+                .map(OutboundHistoryDto::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 재고 출고 처리 (REQ-F-M-006 / 화면설계서 IV-004 "처리 로직" 그대로 구현)
+     *
+     * 처리 순서:
+     *   1) 품목이 실제 존재하고, 삭제(비활성화)되지 않았는지 확인
+     *   2) 그 품목의 현재 재고 수량을 확인 (재고 기록이 없으면 0으로 취급)
+     *   3) 요청 수량이 현재 재고보다 많으면 처리 거부(InsufficientStockException)
+     *   4) 충분하면 재고 수량 차감 + 출고 이력 저장을 "같은 트랜잭션"으로 처리
+     *
+     * 입고 처리와의 핵심 차이(REQ-F-M-006 명세):
+     *   - 입고는 재고 기록이 없으면 새로 만들지만, 출고는 재고 기록을 절대 새로 만들지 않음
+     *     (재고가 아예 없는 품목은 항상 재고 부족으로 거부됨)
+     *   - 입고는 수량 제한이 없지만, 출고는 "현재 재고 이하"라는 상한 제약이 있음
+     *
+     * @param request    출고 요청 정보(품목 id, 수량)
+     * @param employeeId 처리한 사용자(물류관리자)의 사원 번호
+     */
+    @Transactional
+    public void outbound(OutboundRequestDto request, Long employeeId) {
+
+        // 1) 품목 유효성 확인 - 입고 처리와 동일한 방식
+        Item item = itemRepository.findByIdAndDeletedFalse(request.getItemId())
+                .orElseThrow(() -> new ItemNotFoundException(
+                        "등록되지 않았거나 비활성화된 품목입니다. itemId=" + request.getItemId()));
+
+        // 2) 현재 재고 수량 확인. 재고 기록 자체가 없으면 0개로 취급함(위 처리 순서 설명 참고).
+        // [REQ-NF-I-005] 아래 "조회(findByItemId) → 비교 → 차감(decrease) → 저장" 구간은 락이 없어서
+        // 동시 요청에 안전하지 않음 - 이 메서드 전체가 그 결함의 실제 발생 지점임. 증상과 해결 방법
+        // (낙관적/비관적 락)은 Stock.java의 주석 처리된 @Version 필드 위 주석에 자세히 적어둠.
+        Stock stock = stockRepository.findByItemId(item.getId()).orElse(null);
+        int currentQuantity = (stock != null) ? stock.getQuantity() : 0;
+
+        // 3) 재고 부족 검사 - 요청 수량이 현재 재고보다 많으면 처리하지 않고 예외를 던져 중단.
+        //    (요청 수량은 DTO의 @Min(1) 검증을 이미 통과했으므로 항상 1 이상이라,
+        //     stock이 null인 경우(currentQuantity=0)는 이 조건에 항상 걸려 아래 stock.decrease()까지
+        //     내려가지 않음 → NullPointerException 걱정 없이 안전하게 처리됨)
+        if (currentQuantity < request.getQuantity()) {
+            throw new InsufficientStockException(
+                    "재고가 부족하여 출고할 수 없습니다. 현재 재고: " + currentQuantity + "개");
+        }
+
+        // 4) 재고 수량을 요청 수량만큼 줄이고 저장
+        stock.decrease(request.getQuantity());
+        stockRepository.save(stock);
+
+        // 5) 출고 이력을 남김. 재고 차감과 같은 트랜잭션이라 하나가 실패하면 전부 롤백됨
+        //    (입고 처리와 동일한 "재고-이력 불일치 방지" 원칙)
+        StockHistory history = new StockHistory(item, MoveType.OUT, request.getQuantity(), employeeId);
         stockHistoryRepository.save(history);
     }
 }

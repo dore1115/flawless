@@ -10,5 +10,5 @@ package com.dsa.flawless.domain;
  */
 public enum MoveType {
     IN,  // 입고
-    OUT  // 출고 (이번 기능에서는 사용하지 않지만, 이력 테이블은 입/출고를 함께 저장하므로 미리 정의)
+    OUT  // 출고 (재고 출고 처리, REQ-F-M-006에서 사용)
 }

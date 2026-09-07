@@ -7,6 +7,11 @@
     줄임.
   - 사이드바의 "재고 조회 / 출고 / 품목 관리" 메뉴는
     해당 화면들이 실제로 만들어지면 링크만 실제 주소로 변경.
+  - [출고 화면(outbound.html) 추가 시 이 파일도 한 줄 수정함] "출고" 메뉴가 이제 실제로
+    만들어져서, href="#"(눌러도 반응 없음)이던 것을 실제 주소 "/inventory/outbound"로 바꿈.
+    다른 부분은 전혀 건드리지 않음.
+  - [품목 관리(item/list.html) 추가 시 이 파일도 한 줄 수정함] 같은 이유로 "품목 관리" 메뉴의
+    href="#"를 실제 주소 "/inventory"로 바꿈. 다른 부분은 전혀 건드리지 않음.
 -->
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -32,8 +37,8 @@
                 <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">재고 조회</a>
                 <!-- 지금 만든 화면이라 파란색 배경으로 "현재 위치"를 표시 -->
                 <a href="/inventory/inbound" class="block px-3 py-2 rounded-md bg-blue-600 text-white font-medium">입고</a>
-                <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">출고</a>
-                <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">품목 관리</a>
+                <a href="/inventory/outbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">출고</a>
+                <a href="/inventory" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">품목 관리</a>
             </nav>
         </aside>
 
