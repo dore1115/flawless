@@ -55,7 +55,8 @@ public class Attendance extends BaseTimeEntity {
     public Attendance(LocalDate workDate, Employee employee) {
         this.employee = employee;
         this.workDate = workDate;
-        this.dayType = workDate.getDayOfWeek().getValue() == 6 || workDate.getDayOfWeek().getValue() == 7 ? DayType.HOLIDAY : DayType.NORMAL;
+        this.dayType =
+                workDate.getDayOfWeek().getValue() == 6 || workDate.getDayOfWeek().getValue() == 7 ? DayType.HOLIDAY : DayType.NORMAL;
         this.clockInStatus = ClockInStatus.ABSENT;
     }
 
@@ -64,13 +65,20 @@ public class Attendance extends BaseTimeEntity {
     }
 
     // seconds단위는 버리고, 분 단위만 late_minutes에 저장
-    public void clockIn() {
+    public void clockIn(LocalDateTime now) {
         if (isClockedIn()) {
-            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);
+            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! //! REQ-NF-G-004: Exception handler 생성 필요
         }
         LocalTime CLOCK_IN_CRITERIA = LocalTime.of(9,0,0);
-        this.clockIn = LocalDateTime.now();
-        this.lateMinutes = this.clockIn.toLocalTime().compareTo(CLOCK_IN_CRITERIA);
+        this.clockIn = now;
+        this.lateMinutes = Math.max(calcMin(now.toLocalTime(), CLOCK_IN_CRITERIA), 0);
+        this.clockInStatus = this.lateMinutes <= 0 ? ClockInStatus.ON_TIME : ClockInStatus.LATE;
         log.info("{}", lateMinutes);
+    }
+
+    private int calcMin(LocalTime now, LocalTime criteria) {
+        int hour = now.getHour() - criteria.getHour();
+        int min = now.getMinute() - criteria.getMinute();
+        return hour * 60 + min;
     }
 }
