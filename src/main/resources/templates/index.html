@@ -90,6 +90,8 @@
         </article>
 
         <!-- 재고관리 -->
+        <!-- itemSummary(ItemDashboardSummaryDto)는 IndexController에서 넣어줌(공용 파일이라
+             재고관리 카드 값만 최소한으로 바꿈 - IndexController.java 클래스 주석 참고). -->
         <article class="bg-white border border-slate-200 rounded-[10px] p-5 flex flex-col">
             <div class="flex items-center gap-3.5 mb-[18px]">
                 <div class="w-11 h-11 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
@@ -106,9 +108,10 @@
             <hr class="border-t border-slate-100 mb-4">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-slate-500 m-0">재고 부족 알림</p>
-                <span class="bg-red-50 text-red-500 text-[11px] font-bold px-3 py-0.5 rounded-full">3건</span>
+                <span class="bg-red-50 text-red-500 text-[11px] font-bold px-3 py-0.5 rounded-full"
+                      th:text="${itemSummary.lowStockCount} + '건'">3건</span>
             </div>
-            <p class="text-xl font-bold my-1 mb-2.5">128 품목</p>
+            <p class="text-xl font-bold my-1 mb-2.5" th:text="${itemSummary.activeItemCount} + ' 품목'">128 품목</p>
             <p class="text-xs text-slate-400 mb-5 flex-1">품목별 재고 현황과 입출고를 관리하세요.</p>
             <a href="/inventory" class="block text-center bg-blue-50 border border-blue-200 text-blue-600 text-sm font-semibold py-2.5 rounded-md hover:bg-blue-200 transition-colors">바로가기</a>
         </article>

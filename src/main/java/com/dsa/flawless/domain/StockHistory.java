@@ -46,8 +46,6 @@ public class StockHistory extends BaseTimeEntity {
 
     /*
      * ERD상으로는 employee_id가 employee 테이블을 참조하는 FK(N:1)임.
-     * 다만 employee(사원) 엔티티는 다른 팀원이 "회원가입/로그인" 기능에서
-     * 별도로 작업하고 있어, 현재 이 저장소에는 아직 Employee 엔티티가 없음.
      *
      * 그래서 지금은 @ManyToOne 연관관계 대신, employee_id 값(Long)만 그대로 저장.
      * → DB 테이블 구조(FK 포함)는 ERD 그대로 만들어 두고, 자바 쪽 연관 매핑만

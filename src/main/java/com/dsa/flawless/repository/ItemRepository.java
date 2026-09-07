@@ -20,10 +20,12 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     Optional<Item> findByIdAndDeletedFalse(Long id);
 
     /*
-     * [품목 등록(REQ-F-S-009) 기능 추가 시 새로 추가한 메서드]
-     * "동일한 품목명으로 중복 등록은 허용하지 않음"(요구사항정의서 비고)을 확인하기 위한 중복 검사용.
-     * 삭제(비활성화) 여부와 무관하게 이름 자체의 유일성을 확인해야 하므로(item 테이블의 UNIQUE 제약도
-     * deleted 여부를 따지지 않음) deleted 조건 없이 전체를 대상으로 함.
+     * 품목 등록/수정 시 "동일한 품목명으로 중복 등록/변경은 허용하지 않음"(요구사항정의서 비고) 확인용.
+     * 삭제(비활성화) 여부와 무관하게 이름 자체의 유일성을 확인해야 하므로 deleted 조건 없이 전체 대상.
      */
     boolean existsByName(String name);
+
+    // 품목 수정(update) 시 사용: 자기 자신은 제외하고 같은 이름을 쓰는 다른 품목이 있는지 확인
+    // (그러지 않으면 품목명을 안 바꾸고 그대로 저장만 해도 "자기 자신과 중복"으로 걸림)
+    boolean existsByNameAndIdNot(String name, Long id);
 }
