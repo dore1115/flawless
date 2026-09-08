@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+//! REQ-NF-H-007 N+1 (실측 먼저 필요)
+//! EmployeeRepository에 join fetch 쿼리를 추가해서 EmployeeAssignmentService.findAll()이 그걸 쓰게 바꾸기
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 	Optional<Employee> findByUsername(String username);
