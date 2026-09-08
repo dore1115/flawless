@@ -11,6 +11,10 @@ import java.util.Optional;
 
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+	// TODO(REQ-NF-M-003 하드 삭제 + 감사로그 부재): JpaRepository를 상속하고 있어
+	// delete(Employee)/deleteById(Long)를 그대로 쓰면 즉시 하드 삭제된다.
+	// 사원 삭제 기능 구현 시 이 메서드들을 직접 호출하지 말고, Employee에 소프트 삭제
+	// 필드(status 등)를 추가한 뒤 상태만 바꾸는 update 쿼리/메서드를 새로 만들 것.
 	Optional<Employee> findByUsername(String username);
 	boolean existsByUsername(String username);
 	boolean existsByEmail(String email);

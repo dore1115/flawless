@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.*;
 // REQ-F-S-004 사원 계정 등록. ROLE_ADMIN_HR만 접근 가능.
 // ⚠️ Employee가 Builder 전용(setter 없음)이라 자동 바인딩이 안 되고,
 //    DTO도 의도적으로 안 쓰기로 했으므로 개별 @RequestParam으로 값을 받습니다.
+
+// TODO(REQ-NF-M-001 권한 상승 방지 부재): 아래 @PreAuthorize는 SecurityConfig에
+// @EnableMethodSecurity가 없어서 현재 무시된다 -> 이 컨트롤러는 사실상 로그인만 하면
+// 누구나 접근 가능한 상태다. SecurityConfig.java의 TODO 참고해서 함께 고칠 것.
 @Controller
 @RequestMapping("/admin/members")
 @RequiredArgsConstructor
