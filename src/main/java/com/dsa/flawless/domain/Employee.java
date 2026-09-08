@@ -6,6 +6,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+//! REQ-NF-H-008 — 인덱스 부재
+//! 1. 엔티티에 @Table(indexes = {@Index(columnList = "position_id"), @Index(columnList = "department_id")})를 추가
+//! 	(문서화 목적, ddl-auto=validate라 실제로 DB를 바꾸진 않음).
+//! 2. 실제 DB에 ALTER TABLE employee ADD INDEX idx_employee_position_id (position_id),
+//! 	ADD INDEX idx_employee_department_id (department_id);를 직접 실행(또는 schema.sql/마이그레이션 파일로 관리)
 @Table(
 		name="employee",
 		uniqueConstraints = @UniqueConstraint(columnNames = {"username"})

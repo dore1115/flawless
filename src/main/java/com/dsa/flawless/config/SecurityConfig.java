@@ -7,6 +7,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+//! REQ-NF-H-004, REQ-NF-H-005 (인가(Role) 부재)
+//! 1. @EnableMethodSecurity를 추가해서 @PreAuthorize가 실제로 동작하게 만듭니다.
+//! 2. PositionController, DepartmentController 클래스 위에 @PreAuthorize("hasRole('ADMIN_HR')")를 붙이고,
+//! EmployeeController.updateAssignment() (또는 EmployeeAssignmentService.updateEmployeeInfo())에도 같은 걸 붙입니다
+//! — 이미 EmployeeRegisterController에 있는 패턴을 그대로 따라가면 됩니다.
 public class SecurityConfig {
 
 	@Bean
