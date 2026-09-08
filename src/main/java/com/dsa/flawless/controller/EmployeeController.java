@@ -49,7 +49,12 @@ public class EmployeeController {
         }
         return "hr/employee/info";
     }
-
+    
+    // TODO(REQ-NF-M-001 IDOR / 권한 상승 방지 부재): 이 엔드포인트는 ROLE_ADMIN_HR 전용이어야
+    // 하는데 @PreAuthorize가 없고, SecurityConfig도 anyRequest().authenticated()만 걸어놔서
+    // 로그인만 했으면 어떤 role이든 id를 바꿔가며 임의 사원 정보를 수정할 수 있다(IDOR).
+    // -> @PreAuthorize("hasRole('ADMIN_HR')") 추가 (SecurityConfig에 @EnableMethodSecurity 선행 필요)
+    
     @PostMapping("/{id}/assignment")
     public String updateAssignment(@PathVariable Long id,
                                     @ModelAttribute EmployeeAssignmentForm form,

@@ -10,6 +10,11 @@ import lombok.NoArgsConstructor;
 		name="employee",
 		uniqueConstraints = @UniqueConstraint(columnNames = {"username"})
 )
+
+// TODO(REQ-NF-M-003 하드 삭제 + 감사로그 부재): 아직 사원 삭제 기능 자체가 없지만,
+// 나중에 추가할 때 JpaRepository.delete()/deleteById()로 바로 하드 삭제하지 말 것.
+// -> deleted(boolean) 또는 status(VARCHAR: ACTIVE/DELETED) 컬럼을 추가해 소프트 삭제로 처리하고,
+//    관리자의 조회/수정/삭제 행위는 별도 감사로그 테이블(누가/언제/무엇을)에 기록할 것.
 @Getter
 @NoArgsConstructor
 public class Employee extends BaseTimeEntity{
@@ -34,7 +39,12 @@ public class Employee extends BaseTimeEntity{
 
 	@Column(nullable = false, length = 20)
 	private String phone;
-
+	
+	// TODO(REQ-NF-L-005/L-006 조회 지연): department/position이 둘 다 EAGER라
+	// employee를 조회할 때마다(로그인 포함) 항상 두 테이블이 조인된다. 목록/상세 조회에서
+	// N+1까지 겹치면 더 느려지므로 LAZY로 바꾸고, 필요한 화면에서만 fetch join으로
+	// 명시적으로 가져오는 방식 검토.
+	
 	@JoinColumn(name = "department_id") @ManyToOne(fetch = FetchType.EAGER)
 	private Department department;
 
