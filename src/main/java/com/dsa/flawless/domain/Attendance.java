@@ -67,24 +67,13 @@ public class Attendance extends BaseTimeEntity {
     // seconds단위는 버리고, 분 단위만 late_minutes에 저장
     public void clockIn(LocalDateTime now) {
         if (isClockedIn()) {
-            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! REQ-NF-G-004: Exception handler 생성 필요
+            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! //! REQ-NF-G-004: Exception handler 생성 필요
         }
         LocalTime CLOCK_IN_CRITERIA = LocalTime.of(9,0,0);
         this.clockIn = now;
         this.lateMinutes = Math.max(calcMin(now.toLocalTime(), CLOCK_IN_CRITERIA), 0);
         this.clockInStatus = this.lateMinutes <= 0 ? ClockInStatus.ON_TIME : ClockInStatus.LATE;
         log.info("{}", lateMinutes);
-    }
-
-    public void clockOut(LocalDateTime now) {
-        if(!isClockedIn()) {
-            throw new BusinessException(ErrorCode.NOT_CLOCKED_IN);  //! REQ-NF-G-004: Exception handler 생성 필요
-        }
-        LocalTime CLOCK_OUT_CRITERIA = LocalTime.of(18,0,0);
-        this.clockOut = now;
-        this.earlyLeaveMinutes = - Math.min(calcMin(now.toLocalTime(), CLOCK_OUT_CRITERIA), 0);
-        this.clockOutStatus = this.earlyLeaveMinutes <= 0 ? ClockOutStatus.ON_TIME : ClockOutStatus.EARLY;
-        log.info("{}", earlyLeaveMinutes);
     }
 
     private int calcMin(LocalTime now, LocalTime criteria) {
