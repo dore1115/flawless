@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -33,11 +34,12 @@ public class ItemService {
     private final StockRepository stockRepository;
 
     /**
-     * IV-001 목록 조회. 재고 조회 화면(IV-002, REQ-F-S-011)과 달리 이 화면은 "관리" 화면이라
-     * 비활성화(삭제)된 품목도 함께 보여줘야 관리자가 확인할 수 있음 - findAll(Pageable) 그대로 사용.
+     * IV-001 목록 조회.
+     * 비활성화(삭제)된 품목은 DB에는 그대로 남지만 이 목록에는 아예 나타나지 않게 해달라는
+     * 피드백에 맞춰, findAll(Pageable) 대신 findAllByDeletedFalse(Pageable)를 사용함
      */
     public Page<ItemRowDto> findAll(Pageable pageable) {
-        return itemRepository.findAll(pageable)
+        return itemRepository.findAllByDeletedFalse(pageable)
                 .map(item -> new ItemRowDto(item, getCurrentStockQuantity(item.getId())));
     }
 
@@ -64,12 +66,24 @@ public class ItemService {
      * 비고: "동일한 품목명으로 중복 등록은 허용하지 않음" → 저장 전에 미리 존재 여부를 확인.
      * 앞뒤 공백은 trim()으로 제거하고 비교/저장함 - 안 그러면 " 장갑"과 "장갑"이 서로 다른
      * 이름으로 취급돼 중복 검사를 우회할 수 있음(공백만 다른 사실상 같은 이름).
+     * 기존 행을 이름으로 찾아 그 행이 삭제 상태면 그대로 재활성화(activate)하는 방식으로 구현함.
+     *   1) 같은 이름의 "활성" 품목이 있으면 → 중복 등록 거부(기존 규칙 그대로)
+     *   2) 같은 이름의 "삭제된" 품목이 있으면 → 새로 만들지 않고 그 행을 재활성화
+     *   3) 같은 이름이 아예 없으면 → 새 품목으로 등록(기존 규칙 그대로)
+     * 화면/사용자 입장에서는 세 경우 모두 "등록되었습니다"로 동일하게 보임(재활성화라는
+     * 내부 동작을 굳이 드러내지 않음).
      */
     @Transactional
     public void create(String name) {
         String trimmedName = name.trim();
-        if (itemRepository.existsByName(trimmedName)) {
-            throw new DuplicateItemNameException("이미 등록된 품목명입니다: " + trimmedName);
+        Optional<Item> existing = itemRepository.findByName(trimmedName);
+        if (existing.isPresent()) {
+            Item item = existing.get();
+            if (!item.isDeleted()) {
+                throw new DuplicateItemNameException("이미 등록된 품목명입니다: " + trimmedName);
+            }
+            item.activate();
+            return;
         }
         itemRepository.save(new Item(trimmedName));
     }
@@ -106,18 +120,6 @@ public class ItemService {
             throw new ItemInUseException("해당 재고 수량이 남아있어서 삭제할 수 없습니다. 현재 재고: " + currentQuantity + "개");
         }
         item.delete();
-    }
-
-    /**
-     * 품목 재활성화(요구사항 문서 REQ-F-C-008에는 삭제만 정의돼 있고 재활성화는 명시돼 있지 않음).
-     * existsByName() 중복 검사가 삭제 여부를 가리지 않아서, 재활성화 경로가 없으면 한 번 삭제한
-     * 품목명은 영구히 재사용이 막혀버림(같은 이름으로 재등록도, 다른 품목을 그 이름으로 수정도 불가) -
-     * 그 문제를 풀기 위해 추가함. 삭제와 달리 재고 수량 조건은 없음(원래 상태로 되돌리는 것뿐이라).
-     */
-    @Transactional
-    public void activate(Long id) {
-        Item item = getItemOrThrow(id);
-        item.activate();
     }
 
     /**

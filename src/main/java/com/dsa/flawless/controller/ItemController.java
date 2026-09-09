@@ -28,16 +28,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  *   POST /inventory          → create() → (리다이렉트)
  *   POST /inventory/{id}     → update() → (리다이렉트)
  *   POST /inventory/{id}/delete → delete() → (리다이렉트)
- *   POST /inventory/{id}/activate → activate() → (리다이렉트, 요구사항 문서엔 없지만 추가함)
  * 삭제(REQ-F-C-008)는 화면설계서 Controller 표에 행 자체가 없어(등록/수정만 기재됨) 부서/직책
  * 삭제와 같은 "POST /{id}/delete" 규칙을 그대로 따라 새로 정의함.
  */
-//! [REQ-NF-I-002] 품목 등록/수정/삭제/활성화는 화면설계서상 "물류관리자" 전용인데 인가 검증이 없음
+//! [REQ-NF-I-002] 품목 등록/수정/삭제는 화면설계서상 "물류관리자" 전용인데 인가 검증이 없음
 //! - 로그인만 되어 있으면 아무 사원이나 처리 가능. 해결 방법 요약: (1) 로그인 사원의
 //! Role을 조회해 물류관리자가 아니면 거부, 또는 (2) REQ-NF-G-003(전역 인가) 해결 후 SecurityConfig에서
 //! 이 경로를 hasRole("LOGISTICS_MANAGER")로 제한. 자세한 설명은 InventoryController.inbound()의
-//! employeeId 선언부 주석 참고(같은 결함, 같은 해결 방법). activate()는 요구사항 문서 자체에는
-//! 없는 엔드포인트지만, delete()와 같은 성격의 "품목 관리" API라 같은 결함을 그대로 물려받음.
+//! employeeId 선언부 주석 참고(같은 결함, 같은 해결 방법).
 @Controller
 @RequestMapping("/inventory")
 @RequiredArgsConstructor
@@ -45,6 +43,16 @@ public class ItemController {
 
     // 문서에 페이지당 표시 건수가 정해져 있지 않아, 화면 시안의 페이징 UI에 맞춰 임의로 정한 값.
     private static final int PAGE_SIZE = 10;
+
+    // 원래 id 오름차순으로 정렬했으나, 삭제 후 재등록은 새 행을 insert하지 않고
+    // 기존 행을 재활성화하는 방식이라(ItemService.create() 참고) id 자체가 그대로라 id 정렬로는
+    // 항상 원래 위치에 남게 됨.
+    //   - Item.activate()가 재활성화될 때만 createdAt을
+    //     지금 시각으로 다시 채워주므로(Item.java/BaseTimeEntity.refreshCreatedAt() 참고), 삭제 후
+    //     재등록된 품목만 새로 등록한 것처럼 맨 뒤로 이동하고, rename()은 createdAt을 전혀 건드리지
+    //     않으니 단순 수정은 순서에 영향이 없음(한 번도 삭제/재등록된 적 없는 품목은 createdAt이
+    //     최초 등록 순서 그대로라 기존 id 정렬과 결과가 동일함).
+    private static final Sort LIST_SORT = Sort.by("createdAt").ascending();
 
     private final ItemService itemService;
 
@@ -55,7 +63,7 @@ public class ItemController {
      */
     @GetMapping
     public String list(@RequestParam(defaultValue = "0") int page, Model model) {
-        Pageable pageable = PageRequest.of(page, PAGE_SIZE, Sort.by("id").ascending());
+        Pageable pageable = PageRequest.of(page, PAGE_SIZE, LIST_SORT);
         model.addAttribute("items", itemService.findAll(pageable));
 
         if (!model.containsAttribute("itemCreateForm")) {
@@ -92,7 +100,7 @@ public class ItemController {
         }
 
         // 실패 시: 목록을 다시 채워서 같은 화면으로 돌아가되, 등록 모달이 열린 채로 보이도록 함.
-        model.addAttribute("items", itemService.findAll(PageRequest.of(0, PAGE_SIZE, Sort.by("id").ascending())));
+        model.addAttribute("items", itemService.findAll(PageRequest.of(0, PAGE_SIZE, LIST_SORT)));
         model.addAttribute("openRegisterModal", true);
         if (!model.containsAttribute("itemUpdateForm")) {
             model.addAttribute("itemUpdateForm", new ItemUpdateForm());
@@ -132,7 +140,7 @@ public class ItemController {
         // 실패 시: 방금 수정하려던 품목이 있던 그 페이지로 목록을 다시 채워서 같은 화면으로
         // 돌아가되, 해당 품목의 수정 모달이 열린 채로 보이도록 함(현재 재고/등록일시/수정일시
         // 재표시를 위해 items 목록을 그대로 재사용).
-        model.addAttribute("items", itemService.findAll(PageRequest.of(page, PAGE_SIZE, Sort.by("id").ascending())));
+        model.addAttribute("items", itemService.findAll(PageRequest.of(page, PAGE_SIZE, LIST_SORT)));
         model.addAttribute("openEditItemId", id);
         if (!model.containsAttribute("itemCreateForm")) {
             model.addAttribute("itemCreateForm", new ItemCreateForm());
@@ -151,26 +159,6 @@ public class ItemController {
             itemService.delete(id);
             redirectAttributes.addFlashAttribute("message", "품목이 삭제(비활성화)되었습니다.");
         } catch (ItemInUseException | ItemNotFoundException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/inventory";
-    }
-
-    /**
-     * 품목 재활성화(목록 행의 "활성화" 버튼) - 요구사항 문서에 없는 기능이지만, existsByName()
-     * 중복 검사가 삭제 여부를 가리지 않아서 재활성화 경로가 없으면 삭제한 품목명을 영영 재사용할
-     * 수 없게 되는 문제가 있어 추가함. delete()와 동일하게 성공/실패 모두 목록으로 리다이렉트.
-     */
-    //! [REQ-NF-I-002] 이 메서드도 delete()/update()/create()와 마찬가지로 "물류관리자인지" 확인을
-    //! 전혀 안 해서, 로그인만 되어 있으면 아무 사원이나 비활성화된 품목을 다시 활성화할 수 있음.
-    //! 해결 방법은 클래스 상단 주석과 동일(로그인 사원의 Role 확인 후 거부, 또는 REQ-NF-G-003
-    //! 해결 후 SecurityConfig에 hasRole("LOGISTICS_MANAGER") 규칙 추가) - 지금은 의도적으로 미적용.
-    @PostMapping("/{id}/activate")
-    public String activate(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        try {
-            itemService.activate(id);
-            redirectAttributes.addFlashAttribute("message", "품목이 다시 활성화되었습니다.");
-        } catch (ItemNotFoundException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/inventory";

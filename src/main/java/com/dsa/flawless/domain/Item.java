@@ -57,12 +57,14 @@ public class Item extends BaseTimeEntity {
     }
 
     /**
-     * 품목 재활성화(요구사항 문서에는 명시돼 있지 않지만 필요해서 추가함).
-     * existsByName() 중복 검사가 deleted 여부를 가리지 않아서(ItemRepository 참고),
-     * 재활성화 경로가 없으면 한 번 삭제한 품목명은 영구히 재사용이 막히게 됨 - 그걸 풀어주는 용도.
+     * 품목 재활성화
+     * 별도의 "활성화" 메뉴/버튼은 없고, ItemService.create()가 삭제된 품목과 같은 이름으로
+     * 다시 등록하려 할 때 새 행을 만드는 대신 이 메서드를 호출해 기존 행을 되살리는 방식으로만 쓰임
+     * (name 컬럼이 DB unique 제약이라 같은 이름의 행이 두 개 존재할 수 없어서 - ItemRepository 참고).
      */
     public void activate() {
         this.deleted = false;
+        refreshCreatedAt();
     }
 
     // Lombok @Getter가 boolean 필드는 isDeleted()가 아니라 getDeleted()를 만들 수도 있어

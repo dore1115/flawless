@@ -72,7 +72,7 @@ public class InventoryController {
      */
     @GetMapping("/inbound")
     public String inboundForm(Model model) {
-        model.addAttribute("itemOptions", inventoryService.getActiveItemOptions());
+        model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
         model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
 
         // 검증 실패로 이 화면으로 다시 돌아오는 경우가 아니라면(=최초 진입),
@@ -103,7 +103,7 @@ public class InventoryController {
 
         // 1) 입력 형식 검증(수량 1 이상 등) 실패 → 폼 화면을 유지하면서 필드 오류를 함께 보여줌.
         if (bindingResult.hasErrors()) {
-            model.addAttribute("itemOptions", inventoryService.getActiveItemOptions());
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
             model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
             return "inventory/inbound";
         }
@@ -130,7 +130,7 @@ public class InventoryController {
         } catch (ItemNotFoundException e) {
             // 2) 품목이 없거나 비활성화된 경우 → itemId 필드에 오류를 등록하고 폼 화면을 유지.
             bindingResult.rejectValue("itemId", "invalid", "품목을 선택해 주세요.");
-            model.addAttribute("itemOptions", inventoryService.getActiveItemOptions());
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
             model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
             return "inventory/inbound";
         }
