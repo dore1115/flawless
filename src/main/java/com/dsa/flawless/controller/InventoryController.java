@@ -5,10 +5,13 @@ import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
+import com.dsa.flawless.domain.Item;
 import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.InventoryService;
 import jakarta.validation.Valid;
 import java.beans.PropertyEditorSupport;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -20,14 +23,14 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * 재고 관련 화면/처리를 담당하는 컨트롤러.
- * 지금은 "재고 입고 처리(IV-003)"와 "재고 출고 처리(IV-004)" 기능이 구현되어 있음.
- * (품목 관리 IV-001, 재고 조회 IV-002, 이력 IV-005는 이후 별도 작업)
  *
  * 화면설계서 3-1. URL·Controller 목록 표 기준:
+ *   GET  /inventory/items     → list()          → inventory/list.html
  *   GET  /inventory/inbound   → inboundForm()   → inventory/inbound.html
  *   POST /inventory/inbound   → inbound()       → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
  *   GET  /inventory/outbound  → outboundForm()  → inventory/outbound.html
@@ -48,8 +51,6 @@ public class InventoryController {
     private final EmployeeRepository employeeRepository;
 
     /**
-     * [버그 수정] 품목을 선택 안 하고 입고 처리를 누르면 빈 값이 그대로 넘어오는데,
-     * itemId가 Long 타입이라 빈 값을 숫자로 못 바꿔서 오류 화면이 뜨던 문제를 고침.
      * 빈 값이면 그냥 null로 처리해서, 원래 있던 "품목을 선택해 주세요." 메시지가 뜨게 함.
      */
     @InitBinder("inboundRequestDto")
@@ -135,8 +136,10 @@ public class InventoryController {
             return "inventory/inbound";
         }
 
-        // 3) 성공 시: 화면(입고 폼) 자기 자신으로 되돌아가 배너로 보여줌.
-        //    재고 조회 화면이 만들어지면 그때 원래 의도대로 리다이렉트 대상을 바꾸면 됨.
+        // 3) 성공 시: 입고 화면 자기 자신으로 되돌아가 배너로 완료 메시지를 보여줌.
+        //    [되돌림] 한 번은 재고 조회(IV-002) 화면으로 리다이렉트하도록 바꿨었는데, 입고 처리
+        //    후에는 입고 화면에 그대로 남아있는 게 낫다는 피드백을 받아 원래 방식(자기 자신 redirect)으로
+        //    되돌림. 출고 처리(outbound())는 이 피드백 대상이 아니라서 그대로 재고 조회로 리다이렉트함.
         //    addFlashAttribute는 리다이렉트 "다음 한 번의 요청"에만 살아있는 메시지를 전달할 때 사용.
         redirectAttributes.addFlashAttribute("message", "입고 처리가 완료되었습니다.");
         return "redirect:/inventory/inbound";
@@ -150,8 +153,6 @@ public class InventoryController {
      */
 
     /**
-     * [버그 수정] 품목을 선택 안 하고 출고 처리를 누르면 빈 값이 그대로 넘어오는데,
-     * itemId가 Long 타입이라 빈 값을 숫자로 못 바꿔서 오류 화면이 뜨던 문제를 고침.
      * 빈 값이면 그냥 null로 처리해서, 원래 있던 "품목을 선택해 주세요." 메시지가 뜨게 함.
      */
     @InitBinder("outboundRequestDto")
@@ -206,8 +207,7 @@ public class InventoryController {
             model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
             return "inventory/outbound";
         }
-
-        // 로그인 기능이 이제 완성되어 있어서, 입고 처리 때처럼 employeeId를 1로 고정하지 않고
+        
         // 현재 로그인한 사용자의 username(authentication.getName())으로 실제 사원을 조회해서 사용함.
         Employee employee = employeeRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new IllegalStateException(
@@ -235,9 +235,51 @@ public class InventoryController {
             return "inventory/outbound";
         }
 
-        // 4) 성공 시: 위 inbound()와 동일한 이유로, 아직 없는 재고 조회 화면 대신 이 화면(출고 폼)
-        //    자기 자신으로 되돌아가 배너로 완료 메시지를 보여줌.
+        // 4) 성공 시: 위 inbound()와 동일한 이유로(피드백에 따라 재고 조회 화면 대신 자기 자신인
+        //    출고 화면으로 되돌아가도록 되돌림), 출고 화면 자기 자신으로 되돌아가 배너로 완료 메시지를 보여줌.
         redirectAttributes.addFlashAttribute("message", "출고 처리가 완료되었습니다.");
         return "redirect:/inventory/outbound";
+    }
+
+    /*
+     * ================================================================
+     * 아래부터는 재고 조회(IV-002) 기능을 위해 새로 추가한 부분.
+     * ================================================================
+     */
+
+    // 한 페이지에 보여줄 품목 수.
+    private static final int STOCK_PAGE_SIZE = 10;
+
+    /**
+     * IV-002 재고 조회 화면(REQ-F-S-011). name이 있으면 재고 검색(REQ-F-C-008)까지 함께 처리함.
+     */
+    //! [REQ-NF-I-004] 페이지네이션 부재 결함: DB에는 Pageable 없이 조건에 맞는 전체 품목을
+    //! 한 번에 다 가져오게 해두고(InventoryService.getFilteredActiveItems() 참고), 여기서
+    //! 자바 메모리 상 subList()로 요청 페이지만 잘라냄(의도적으로 남겨둔 성능 결함). 해결 방법:
+    //! ItemController.list()처럼 Pageable을 받는 리포지토리 메서드로 바꿔서 DB가 LIMIT/OFFSET을
+    //! 처리하도록 함.
+
+    @GetMapping("/items")
+    public String list(@RequestParam(required = false) String name,
+                        @RequestParam(defaultValue = "0") int page,
+                        Model model) {
+        List<Item> matchedItems = inventoryService.getFilteredActiveItems(name);
+
+        int totalCount = matchedItems.size();
+        int totalPages = (totalCount == 0) ? 1 : (int) Math.ceil((double) totalCount / STOCK_PAGE_SIZE);
+        int currentPage = Math.max(0, Math.min(page, totalPages - 1));
+
+        int fromIndex = Math.min(currentPage * STOCK_PAGE_SIZE, totalCount);
+        int toIndex = Math.min(fromIndex + STOCK_PAGE_SIZE, totalCount);
+        List<Item> pagedItems = matchedItems.subList(fromIndex, toIndex);
+
+        Map<Long, Integer> quantities = inventoryService.getCurrentQuantities(pagedItems);
+
+        model.addAttribute("items", pagedItems);
+        model.addAttribute("quantities", quantities);
+        model.addAttribute("keyword", name);
+        model.addAttribute("currentPage", currentPage);
+        model.addAttribute("totalPages", totalPages);
+        return "inventory/list";
     }
 }

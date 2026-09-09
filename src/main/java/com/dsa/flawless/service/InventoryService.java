@@ -14,7 +14,9 @@ import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.repository.ItemRepository;
 import com.dsa.flawless.repository.StockHistoryRepository;
 import com.dsa.flawless.repository.StockRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -187,5 +189,63 @@ public class InventoryService {
         //    (입고 처리와 동일한 "재고-이력 불일치 방지" 원칙)
         StockHistory history = new StockHistory(item, MoveType.OUT, request.getQuantity(), employeeId);
         stockHistoryRepository.save(history);
+    }
+
+    /*
+     * ================================================================
+     * 아래부터는 재고 조회(IV-002, REQ-F-S-011) + 재고 검색(REQ-F-C-008) 기능을 위해
+     * 새로 추가한 메서드임.
+     * ================================================================
+     */
+
+    /**
+     * IV-002 재고 조회 목록의 대상 품목을 가져옴(REQ-F-S-011). name이 있으면 재고 검색(REQ-F-C-008)까지
+     * 함께 처리 - 삭제(비활성화)된 품목은 "재고 조회 목록에 표시되지 않음"(요구사항 비고) 조건 그대로
+     * findAllByDeletedFalse 계열 쿼리를 씀.
+     *
+     */
+    //! [REQ-NF-I-004] 페이지네이션 부재 결함: 요청한 페이지 크기만큼만 DB에서 가져오는 대신, 조건에
+    //! 맞는 전체 품목을 여기서 한 번에 다 가져옴 - 실제 페이지 자르기는 InventoryController.list()가
+    //! 이 결과를 받아 자바 메모리 상에서 subList()로 처리함(의도적으로 남겨둔 성능 결함). 데이터가
+    //! 많아지면 페이지를 몇 번째로 요청하든 매번 전체 데이터를 읽어옴.
+    //! 해결 방법: ItemController.list()처럼 Pageable을 받는 findAllByDeletedFalse(Pageable)/findAllByDeletedFalseAnd
+    //! NameContaining(...)에 Pageable을 추가해 DB가 LIMIT/OFFSET을 처리하도록 바꿈.
+    
+    @Transactional(readOnly = true)
+    public List<Item> getFilteredActiveItems(String name) {
+        // [버그 수정] 품목 관리(IV-001, createdAt 오름차순)와 정렬 순서가 달라 페이지별로 보이는
+        // 품목이 서로 어긋나던 문제 - 정렬을 보장하는 findAllByDeletedFalseOrderByCreatedAtAsc()/
+        // findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc()로 교체함(ItemRepository 참고).
+        if (name == null || name.isBlank()) {
+            return itemRepository.findAllByDeletedFalseOrderByCreatedAtAsc();
+        }
+        return itemRepository.findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(name.trim());
+    }
+
+    /**
+     * 위 getFilteredActiveItems()가 돌려준 품목들의 "현재 재고 수량"을 품목 id 기준으로 모아 담음.
+     *
+     */
+    //! [REQ-NF-I-001] 재고 조회 화면은 Item 엔티티를 변환 없이 그대로 Model에 담아 화면에 넘김
+    //! (다른 화면들은 ItemRowDto/OutboundItemOptionDto 등으로 변환해서 넘기는 것과 다름 - 의도적으로
+    //! 남겨둔 결함). 화면 표시에 필요 없는 등록/수정일시, deleted 플래그 등 내부 필드까지 템플릿에서
+    //! 그대로 접근 가능한 상태임. 해결 방법: 품목명/현재 수량만 담는 별도 응답 DTO(예: StockRowDto)를
+    //! 만들어 InventoryController.list()가 Item 대신 그 DTO 목록을 Model에 담도록 바꿈.
+    //!
+    //! [REQ-NF-I-003] 아래 for문이 품목 하나하나마다 stockRepository.findByItemId()를 개별
+    //! 호출하는 N+1 쿼리임 - ItemService.getDashboardSummary(), InventoryService.
+    //! getActiveItemOptionsWithStock()와 동일한 패턴의 결함을 재고 조회 화면에도 그대로 남겨둠.
+    //! 해결 방법: 품목 id 목록을 한 번에 IN 절로 조회하는 배치 쿼리로 교체.
+    
+    @Transactional(readOnly = true)
+    public Map<Long, Integer> getCurrentQuantities(List<Item> items) {
+        Map<Long, Integer> quantities = new LinkedHashMap<>();
+        for (Item item : items) {
+            int currentQuantity = stockRepository.findByItemId(item.getId())
+                    .map(Stock::getQuantity)
+                    .orElse(0);
+            quantities.put(item.getId(), currentQuantity);
+        }
+        return quantities;
     }
 }
