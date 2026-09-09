@@ -72,7 +72,7 @@ public class InventoryController {
      */
     @GetMapping("/inbound")
     public String inboundForm(Model model) {
-        model.addAttribute("itemOptions", inventoryService.getActiveItemOptions());
+        model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
         model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
 
         // 검증 실패로 이 화면으로 다시 돌아오는 경우가 아니라면(=최초 진입),
@@ -103,26 +103,26 @@ public class InventoryController {
 
         // 1) 입력 형식 검증(수량 1 이상 등) 실패 → 폼 화면을 유지하면서 필드 오류를 함께 보여줌.
         if (bindingResult.hasErrors()) {
-            model.addAttribute("itemOptions", inventoryService.getActiveItemOptions());
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
             model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
             return "inventory/inbound";
         }
 
-        // [REQ-NF-I-002] 비기능요구사항 결함: "품목 등록/수정/삭제, 재고 정보 삭제" API에 물류관리자 권한 검증이 빠져 있음
-        //   - 증상: 화면설계서상 이 입고 화면은 "물류관리자 전용"인데, 지금은 로그인만 되어 있으면
-        //     어떤 사원이든(직급 무관) 이 API를 그대로 호출해 정상 처리됨. 게다가 이 메서드는
-        //     로그인 사원이 누구인지조차 확인하지 않고 employeeId를 1로 고정해둔 상태임(출고 처리는
-        //     이미 로그인 사원을 조회하도록 고쳐져 있음 - 아래 outbound() 메서드 참고).
-        //   - 해결 방법:
-        //     1) (우선 적용 가능) outbound()처럼 employeeRepository.findByUsername(authentication
-        //        .getName())으로 로그인 사원을 먼저 조회하고, 그 사원의 Role이 물류관리자인지 직접
-        //        확인해서 아니면 예외(예: AccessDeniedException)를 던져 403으로 응답하도록 고침.
-        //     2) (근본 해결) REQ-NF-G-003(전역 인가 아키텍처 부재)이 먼저 해결된 뒤, SecurityConfig에
-        //        "/inventory/inbound", "/inventory/outbound", "/inventory"(POST) 등을
-        //        hasRole("LOGISTICS_MANAGER")로 제한하는 규칙을 추가하면 컨트롤러마다 따로 권한
-        //        코드를 넣지 않아도 됨(요구사항정의서 비고: "G3가 먼저 갖춰지면 근본적으로 해결됨").
-        //   - 지금은 의도적으로 미적용 상태로 남겨둔 결함이라 고치지 않았고, 로그인 사원 조회조차
-        //     안 해서 임시로 employeeId=1L을 그대로 씀.
+        //! [REQ-NF-I-002] 비기능요구사항 결함: "품목 등록/수정/삭제, 재고 정보 삭제" API에 물류관리자 권한 검증이 빠져 있음
+        //!   - 증상: 화면설계서상 이 입고 화면은 "물류관리자 전용"인데, 지금은 로그인만 되어 있으면
+        //!     어떤 사원이든(직급 무관) 이 API를 그대로 호출해 정상 처리됨. 게다가 이 메서드는
+        //!     로그인 사원이 누구인지조차 확인하지 않고 employeeId를 1로 고정해둔 상태임(출고 처리는
+        //!     이미 로그인 사원을 조회하도록 고쳐져 있음 - 아래 outbound() 메서드 참고).
+        //!   - 해결 방법:
+        //!     1) (우선 적용 가능) outbound()처럼 employeeRepository.findByUsername(authentication
+        //!        .getName())으로 로그인 사원을 먼저 조회하고, 그 사원의 Role이 물류관리자인지 직접
+        //!        확인해서 아니면 예외(예: AccessDeniedException)를 던져 403으로 응답하도록 고침.
+        //!     2) (근본 해결) REQ-NF-G-003(전역 인가 아키텍처 부재)이 먼저 해결된 뒤, SecurityConfig에
+        //!        "/inventory/inbound", "/inventory/outbound", "/inventory"(POST) 등을
+        //!        hasRole("LOGISTICS_MANAGER")로 제한하는 규칙을 추가하면 컨트롤러마다 따로 권한
+        //!        코드를 넣지 않아도 됨(요구사항정의서 비고: "G3가 먼저 갖춰지면 근본적으로 해결됨").
+        //!   - 지금은 의도적으로 미적용 상태로 남겨둔 결함이라 고치지 않았고, 로그인 사원 조회조차
+        //!     안 해서 임시로 employeeId=1L을 그대로 씀.
         Long employeeId = 1L;
 
         try {
@@ -130,20 +130,21 @@ public class InventoryController {
         } catch (ItemNotFoundException e) {
             // 2) 품목이 없거나 비활성화된 경우 → itemId 필드에 오류를 등록하고 폼 화면을 유지.
             bindingResult.rejectValue("itemId", "invalid", "품목을 선택해 주세요.");
-            model.addAttribute("itemOptions", inventoryService.getActiveItemOptions());
+            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
             model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
             return "inventory/inbound";
         }
 
-        // 3) 성공 시: 화면설계서 화면 흐름도에 따라 "재고 조회(IV-002, /inventory/items)"로 이동.
+        // 3) 성공 시: 화면(입고 폼) 자기 자신으로 되돌아가 배너로 보여줌.
+        //    재고 조회 화면이 만들어지면 그때 원래 의도대로 리다이렉트 대상을 바꾸면 됨.
         //    addFlashAttribute는 리다이렉트 "다음 한 번의 요청"에만 살아있는 메시지를 전달할 때 사용.
         redirectAttributes.addFlashAttribute("message", "입고 처리가 완료되었습니다.");
-        return "redirect:/inventory/items";
+        return "redirect:/inventory/inbound";
     }
 
     /*
      * ================================================================
-     * 아래부터는 재고 출고 처리(REQ-F-M-006) 기능을 위해 새로 추가한 부분임.
+     * 아래부터는 재고 출고 처리(REQ-F-M-006) 기능을 위해 새로 추가한 부분.
      * 위 입고 컨트롤러 메서드 두 개와 최대한 같은 구조로 작성함.
      * ================================================================
      */
@@ -213,9 +214,9 @@ public class InventoryController {
                         "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + authentication.getName()));
         Long employeeId = employee.getId();
 
-        // [REQ-NF-I-002] "누가 로그인했는지"는 위에서 정확히 알아내지만, "이 사원이 물류관리자인지"는
-        // 확인하지 않아서 아무 사원이나 출고 처리가 가능한 상태임(증상/해결 방법은 위 inbound() 메서드의
-        // employeeId 선언부 주석에 자세히 적어둠 - 같은 결함, 같은 해결 방법이 그대로 적용됨).
+        //! [REQ-NF-I-002] "누가 로그인했는지"는 위에서 정확히 알아내지만, "이 사원이 물류관리자인지"는
+        //! 확인하지 않아서 아무 사원이나 출고 처리가 가능한 상태임(증상/해결 방법은 위 inbound() 메서드의
+        //! employeeId 선언부 주석에 자세히 적어둠 - 같은 결함, 같은 해결 방법이 그대로 적용됨).
 
         try {
             inventoryService.outbound(requestDto, employeeId);
@@ -234,8 +235,9 @@ public class InventoryController {
             return "inventory/outbound";
         }
 
-        // 4) 성공 시: 입고 처리와 동일하게 재고 조회(IV-002, /inventory/items)로 이동.
+        // 4) 성공 시: 위 inbound()와 동일한 이유로, 아직 없는 재고 조회 화면 대신 이 화면(출고 폼)
+        //    자기 자신으로 되돌아가 배너로 완료 메시지를 보여줌.
         redirectAttributes.addFlashAttribute("message", "출고 처리가 완료되었습니다.");
-        return "redirect:/inventory/items";
+        return "redirect:/inventory/outbound";
     }
 }

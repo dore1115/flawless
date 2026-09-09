@@ -2,7 +2,6 @@ package com.dsa.flawless.service;
 
 import com.dsa.flawless.dto.InboundHistoryDto;
 import com.dsa.flawless.dto.InboundRequestDto;
-import com.dsa.flawless.dto.ItemOptionDto;
 import com.dsa.flawless.dto.OutboundHistoryDto;
 import com.dsa.flawless.dto.OutboundItemOptionDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
@@ -38,18 +37,6 @@ public class InventoryService {
     private final ItemRepository itemRepository;
     private final StockRepository stockRepository;
     private final StockHistoryRepository stockHistoryRepository;
-
-    /**
-     * 입고 폼(IV-003)의 "품목 선택" 목록에 표시할, 삭제되지 않은 품목 목록을 가져옴.
-     * @Transactional(readOnly = true): 조회 전용 트랜잭션임을 명시해 JPA가 변경 감지(dirty checking)
-     * 등의 불필요한 작업을 생략하도록 해 약간의 성능 이점을 얻음.
-     */
-    @Transactional(readOnly = true)
-    public List<ItemOptionDto> getActiveItemOptions() {
-        return itemRepository.findAllByDeletedFalse().stream()
-                .map(ItemOptionDto::new)
-                .collect(Collectors.toList());
-    }
 
     /**
      * 입고 폼에 참고로 보여줄 "최근 입고 이력 5건"을 가져옴.
@@ -118,13 +105,12 @@ public class InventoryService {
      */
 
     /**
-     * 출고 폼(IV-004)의 "품목 선택" 목록을 가져옴.
-     * 화면설계서 시안에 "선택한 품목의 현재 재고 수량"을 같이 보여주는 부분이 있어서,
-     * 입고 화면의 getActiveItemOptions()와 달리 품목마다 현재 재고 수량도 같이 담아 내려줌.
+     * 출고 폼(IV-004)의 "품목 선택" 목록을 가져옴. 품목마다 현재 재고 수량도 같이 담아 내려줌
+     *
+     * "재고 수량이 포함된 품목 옵션"이라는 뜻으로 입고/출고 둘 다에서 씀.
      *
      * 품목 하나하나마다 재고를 따로 조회하는 방식(N+1 조회)이라 데이터가 아주 많아지면
      * 느려질 수 있는 방식이지만, 지금 프로젝트 규모에서는 문제되지 않아 단순하게 구현함
-     * (프로젝트 방침: 완벽한 성능보다 이해하기 쉬운 코드를 우선함).
      */
     @Transactional(readOnly = true)
     public List<OutboundItemOptionDto> getActiveItemOptionsWithStock() {
@@ -178,9 +164,9 @@ public class InventoryService {
                         "등록되지 않았거나 비활성화된 품목입니다. itemId=" + request.getItemId()));
 
         // 2) 현재 재고 수량 확인. 재고 기록 자체가 없으면 0개로 취급함(위 처리 순서 설명 참고).
-        // [REQ-NF-I-005] 아래 "조회(findByItemId) → 비교 → 차감(decrease) → 저장" 구간은 락이 없어서
-        // 동시 요청에 안전하지 않음 - 이 메서드 전체가 그 결함의 실제 발생 지점임. 증상과 해결 방법
-        // (낙관적/비관적 락)은 Stock.java의 주석 처리된 @Version 필드 위 주석에 자세히 적어둠.
+        //! [REQ-NF-I-005] 아래 "조회(findByItemId) → 비교 → 차감(decrease) → 저장" 구간은 락이 없어서
+        //! 동시 요청에 안전하지 않음 - 이 메서드 전체가 그 결함의 실제 발생 지점임. 증상과 해결 방법
+        //! (낙관적/비관적 락)은 Stock.java의 주석 처리된 @Version 필드 위 주석에 자세히 적어둠.
         Stock stock = stockRepository.findByItemId(item.getId()).orElse(null);
         int currentQuantity = (stock != null) ? stock.getQuantity() : 0;
 

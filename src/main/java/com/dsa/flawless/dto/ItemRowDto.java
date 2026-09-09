@@ -1,25 +1,32 @@
 package com.dsa.flawless.dto;
 
 import com.dsa.flawless.domain.Item;
+import java.time.LocalDateTime;
 import lombok.Getter;
 
 /**
- * IV-001 화면(품목 관리) 목록의 한 행에 표시할 정보만 담는 DTO.
- * Item 엔티티 전체(생성일시 등)를 화면에 그대로 넘기지 않고 필요한 값만 골라서 전달함
- * (화면설계서 공통 UI 규칙: "민감정보: Entity를 화면/응답에 그대로 넘기지 않고 DTO로 변환").
+ * IV-001 화면(품목 관리) 목록의 한 행 + 그 행의 "품목 정보 수정" 모달에 필요한 정보를 함께 담는 DTO.
+ * 목록과 수정 모달이 같은 화면(list.html) 안에 있어서, "수정" 버튼을 눌렀을 때 서버에 다시
+ * 요청하지 않고 Thymeleaf가 화면을 그릴 때 행마다 모달까지 함께 그려두는 방식을 씀.
  *
- * status(상태) 배지는 item 테이블에 별도 컬럼이 없고(ERD 04_ERD_테이블정의서 기준) is_deleted만
- * 있으므로, "활성/비활성"은 deleted 값에서 화면(Thymeleaf)이 파생시켜 표시.
+ * status(상태) 배지는 item 테이블에 별도 컬럼이 없고 is_deleted만 있어서(ERD 기준),
+ * "활성/비활성"은 deleted 값에서 화면이 파생시켜 표시.
  */
 @Getter
 public class ItemRowDto {
     private final Long id;
     private final String name;
     private final boolean deleted;
+    private final int currentStockQuantity;
+    private final LocalDateTime createdAt;
+    private final LocalDateTime updatedAt;
 
-    public ItemRowDto(Item item) {
+    public ItemRowDto(Item item, int currentStockQuantity) {
         this.id = item.getId();
         this.name = item.getName();
         this.deleted = item.isDeleted();
+        this.currentStockQuantity = currentStockQuantity;
+        this.createdAt = item.getCreatedAt();
+        this.updatedAt = item.getUpdatedAt();
     }
 }

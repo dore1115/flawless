@@ -39,26 +39,25 @@ public class Stock extends BaseTimeEntity {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
+    //! [REQ-NF-I-005] 비기능요구사항 결함: 재고 출고 모듈의 동시성 결함
+    //!   - 증상: 같은 품목에 대해 여러 출고 요청이 동시에 들어오면(예: 재고 5개인데 2개짜리 출고
+    //!     요청이 동시에 3건 들어옴), InventoryService.outbound()의 "재고 조회 → 수량 비교 →
+    //!     차감(decrease) → 저장" 네 단계 사이에 아무 락도 없어서, 여러 요청이 전부 "재고 충분함"으로
+    //!     통과한 뒤 각자 차감해버려 실제 재고보다 더 많은 수량이 출고 처리될 수 있음(최종 재고가
+    //!     음수가 될 수도 있음) - 전형적인 Lost Update/Race Condition.
+    //!   - 해결 방법(택 1):
+    //!     1) 낙관적 락(Optimistic Lock): DB에
+    //!        `ALTER TABLE stock ADD COLUMN version INT NOT NULL DEFAULT 0;` 로 컬럼 추가 후,
+    //!        아래처럼 @Version 필드를 살리면 JPA가 저장 시점마다 버전을 자동으로 검사·증가시킴.
+    //!        이러면 동시에 두 트랜잭션이 같은 Stock 행을 수정하려 할 때, 나중에 커밋하는 쪽이
+    //!        OptimisticLockingFailureException을 받음 → InventoryService.outbound()에서 그
+    //!        예외를 잡아 "다시 시도해 주세요" 안내를 하거나 @Retryable로 자동 재시도하도록 고쳐야 함.
+    //!     2) 비관적 락(Pessimistic Lock): StockRepository.findByItemId()에
+    //!        `@Lock(LockModeType.PESSIMISTIC_WRITE)`를 붙이면, 한 트랜잭션이 특정 재고 행을 조회하는
+    //!        순간 DB 차원에서 그 행을 잠가 다른 트랜잭션이 끝날 때까지 기다리게 만듦(동시 요청이
+    //!        많을 때 낙관적 락보다 더 확실히 막지만, 그만큼 대기 시간이 늘어날 수 있음).
+    //!   - 지금은 두 방법 다 적용하지 않은 의도적 결함 상태라 @Version 필드를 아래처럼 주석 처리해둠.
     /*
-     * [REQ-NF-I-005] 비기능요구사항 결함: 재고 출고 모듈의 동시성 결함
-     *   - 증상: 같은 품목에 대해 여러 출고 요청이 동시에 들어오면(예: 재고 5개인데 2개짜리 출고
-     *     요청이 동시에 3건 들어옴), InventoryService.outbound()의 "재고 조회 → 수량 비교 →
-     *     차감(decrease) → 저장" 네 단계 사이에 아무 락도 없어서, 여러 요청이 전부 "재고 충분함"으로
-     *     통과한 뒤 각자 차감해버려 실제 재고보다 더 많은 수량이 출고 처리될 수 있음(최종 재고가
-     *     음수가 될 수도 있음) - 전형적인 Lost Update/Race Condition.
-     *   - 해결 방법(택 1):
-     *     1) 낙관적 락(Optimistic Lock): DB에
-     *        `ALTER TABLE stock ADD COLUMN version INT NOT NULL DEFAULT 0;` 로 컬럼 추가 후,
-     *        아래처럼 @Version 필드를 살리면 JPA가 저장 시점마다 버전을 자동으로 검사·증가시킴.
-     *        이러면 동시에 두 트랜잭션이 같은 Stock 행을 수정하려 할 때, 나중에 커밋하는 쪽이
-     *        OptimisticLockingFailureException을 받음 → InventoryService.outbound()에서 그
-     *        예외를 잡아 "다시 시도해 주세요" 안내를 하거나 @Retryable로 자동 재시도하도록 고쳐야 함.
-     *     2) 비관적 락(Pessimistic Lock): StockRepository.findByItemId()에
-     *        `@Lock(LockModeType.PESSIMISTIC_WRITE)`를 붙이면, 한 트랜잭션이 특정 재고 행을 조회하는
-     *        순간 DB 차원에서 그 행을 잠가 다른 트랜잭션이 끝날 때까지 기다리게 만듦(동시 요청이
-     *        많을 때 낙관적 락보다 더 확실히 막지만, 그만큼 대기 시간이 늘어날 수 있음).
-     *   - 지금은 두 방법 다 적용하지 않은 의도적 결함 상태라 @Version 필드를 아래처럼 주석 처리해둠.
-     *
      * @Column(name = "version", nullable = false)
      * private int version = 0;
      */

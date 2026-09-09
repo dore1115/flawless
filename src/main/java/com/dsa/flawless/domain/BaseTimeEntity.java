@@ -20,8 +20,9 @@ import java.time.LocalDateTime;
 @MappedSuperclass
 public abstract class BaseTimeEntity {
     
-    // 최초 저장(INSERT)될 때 한 번만 값이 채워지고, 이후에는 수정되지 않음.
-    @Column(name = "created_at", nullable = false, updatable = false)
+    // 최초 저장(INSERT)될 때 값이 채워지고, 원칙적으로는 이후 수정 불가.
+    // 해야 하는 특수한 경우를 위해 자식 클래스가 의도적으로 다시 채울 수 있게 열어둠
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
     // save() 호출로 값이 바뀔 때마다(UPDATE) 자동으로 현재 시각으로 갱신.
@@ -46,6 +47,13 @@ public abstract class BaseTimeEntity {
         this.updatedAt = LocalDateTime.now();
     }
     
+    // Item.activate()(삭제된 품목을 같은 이름으로 재등록할 때) 전용으로 연 통로.
+    // 목록 정렬 기준인 createdAt을 재등록 시점으로 다시 채워야 해서 추가함. protected로 제한해 다른 엔티티나
+    // 일반적인 상황에서는 여전히 createdAt이 최초 등록 시각 그대로 유지되도록 함.
+    protected void refreshCreatedAt() {
+        this.createdAt = LocalDateTime.now();
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

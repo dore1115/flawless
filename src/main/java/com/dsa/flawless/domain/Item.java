@@ -13,9 +13,7 @@ import lombok.NoArgsConstructor;
  * 품목(item) 마스터 엔티티.
  * ERD 정의: 재고 입출고 대상이 되는 품목 정보. "실제 재고 수량은 두지 않는다"는 것이
  * 이 테이블 설계의 핵심 규칙(수량은 Stock 엔티티가 별도로 관리).
- *
- * 품목 등록/수정/삭제 기능(REQ-F-S-009~010, REQ-F-C-008)은 이번 작업 범위가 아니므로,
- * 여기서는 "입고 처리가 참조만 하는" 최소한의 형태로만 만듦.
+ * 품목 등록(REQ-F-S-009)/수정(REQ-F-S-010)/삭제(REQ-F-C-008) 전부 이 클래스 범위.
  */
 @Entity
 @Table(name = "item")
@@ -38,6 +36,35 @@ public class Item extends BaseTimeEntity {
 
     public Item(String name) {
         this.name = name;
+    }
+
+    /**
+     * REQ-F-S-010(품목 정보 수정): 품목명을 바꿈. 중복 검사는(등록 시와 동일한 규칙) 여기가 아니라
+     * ItemService가 저장 전에 미리 확인함(Stock.increase()/decrease()와 같은 패턴 -
+     * "바꿔도 되는지"는 서비스 책임, "실제로 바꾸는 방법"만 엔티티 책임).
+     */
+    public void rename(String name) {
+        this.name = name;
+    }
+
+    /**
+     * REQ-F-C-008(품목 삭제): 물리 삭제가 아니라 is_deleted를 true로 바꾸는 논리 삭제.
+     * "재고 수량이 0이 아니면 삭제 불가" 규칙 확인은 Position/Department.deactivate()와
+     * 동일하게 서비스 계층 책임 - 이 메서드는 무조건 비활성화만 함.
+     */
+    public void delete() {
+        this.deleted = true;
+    }
+
+    /**
+     * 품목 재활성화
+     * 별도의 "활성화" 메뉴/버튼은 없고, ItemService.create()가 삭제된 품목과 같은 이름으로
+     * 다시 등록하려 할 때 새 행을 만드는 대신 이 메서드를 호출해 기존 행을 되살리는 방식으로만 쓰임
+     * (name 컬럼이 DB unique 제약이라 같은 이름의 행이 두 개 존재할 수 없어서 - ItemRepository 참고).
+     */
+    public void activate() {
+        this.deleted = false;
+        refreshCreatedAt();
     }
 
     // Lombok @Getter가 boolean 필드는 isDeleted()가 아니라 getDeleted()를 만들 수도 있어

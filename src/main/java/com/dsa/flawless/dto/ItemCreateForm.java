@@ -1,6 +1,7 @@
 package com.dsa.flawless.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,5 +19,7 @@ import lombok.Setter;
 public class ItemCreateForm {
 
     @NotBlank(message = "품목명을 입력해 주세요.")
+    // ERD/DB 컬럼이 VARCHAR(100)이라, 초과 입력 시 DB 예외(500)로 튕기던 걸 막기 위해 추가함.
+    @Size(max = 100, message = "품목명은 100자를 초과할 수 없습니다.")
     private String name;
 }
