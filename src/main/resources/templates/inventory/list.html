@@ -1,0 +1,106 @@
+<!--
+  templates/inventory/list.html
+  화면 ID: IV-002 (재고 조회)
+  대응 Controller: InventoryController.list() [GET /inventory/items]
+  관련 요구사항: REQ-F-S-011(재고 조회), REQ-F-C-008(재고 검색)
+
+  Model 속성: items(List<Item>), quantities(Map<Long,Integer>, 품목 id별 현재 재고 수량),
+              keyword(String, 검색어 - 검색창 재표시용), currentPage(int), totalPages(int)
+
+  //! [REQ-NF-I-001] Item 엔티티를 변환 없이 그대로 받아 화면에서 사용함(다른 화면들처럼 Row Dto로
+  //! 변환하지 않음 - 의도적으로 남겨둔 결함). InventoryService.getCurrentQuantities() 주석 참고.
+  ※ REQ-NF-G-003/REQ-NF-I-002로 로그인만 되어 있으면 누구나 접근 가능(별도 권한 검증 없음).
+-->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>재고 조회</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen flex flex-col">
+
+    <!-- 상단 헤더: 다른 재고 화면들과 동일한 틀(짙은 남색 바) -->
+    <header class="bg-slate-900 text-white px-6 py-4 flex items-center shrink-0">
+        <span class="font-bold tracking-wide">ERP SYSTEM</span>
+        <span class="text-slate-400 ml-2">· 재고관리</span>
+    </header>
+
+    <div class="flex flex-1">
+
+        <!-- 왼쪽 사이드바 메뉴: 재고 조회(현재 화면) / 입고 / 출고 / 품목 관리 -->
+        <aside class="w-48 bg-white border-r border-gray-200 shrink-0 py-4 px-3">
+            <nav class="space-y-1 text-sm">
+                <!-- 지금 만든 화면이라 파란색 배경으로 "현재 위치"를 표시 -->
+                <a href="/inventory/items" class="block px-3 py-2 rounded-md bg-blue-600 text-white font-medium">재고 조회</a>
+                <a href="/inventory/inbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">입고</a>
+                <a href="/inventory/outbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">출고</a>
+                <a href="/inventory" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">품목 관리</a>
+            </nav>
+        </aside>
+
+        <!-- 오른쪽 메인 영역: 다른 재고 화면들과 동일하게 w-full 카드로 빈 공간을 줄임 -->
+        <main class="flex-1 p-8">
+            <div class="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+
+                <div class="flex items-center justify-between mb-6">
+                    <h1 class="text-lg font-bold text-gray-900">재고 조회</h1>
+
+                    <!-- 재고 검색(REQ-F-C-008): 품목명 조건으로 검색. GET 방식이라 검색 결과를
+                         새로고침/북마크해도 그대로 유지됨. 검색 시 항상 첫 페이지부터 다시 봄. -->
+                    <form th:action="@{/inventory/items}" method="get" class="flex gap-2">
+                        <input type="text" name="name" th:value="${keyword}" placeholder="품목명 검색"
+                               class="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md font-medium hover:bg-blue-700">검색</button>
+                    </form>
+                </div>
+
+                <table class="w-full text-sm">
+                    <thead class="border-b border-gray-200">
+                    <tr>
+                        <th class="text-left font-semibold text-gray-500 py-2">품목명</th>
+                        <th class="text-right font-semibold text-gray-500 py-2">현재 수량</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 빈 상태: 화면설계서 공통 UI 규칙 - "등록된 데이터가 없습니다" 안내 (빈 화면 금지) -->
+                    <tr th:if="${items.empty}">
+                        <td colspan="2" class="py-6 text-center text-gray-400">등록된 데이터가 없습니다.</td>
+                    </tr>
+                    <!-- 품목명을 누르면 재고 입출고 이력 조회(IV-005)로 이동함. 그 화면은 아직 별도
+                         브랜치에서 구현 예정이라 지금은 링크만 미리 만들어 둠(구현 전까지는 404). -->
+                    <tr th:each="item : ${items}" class="border-b border-gray-100 last:border-0">
+                        <td class="py-3 text-gray-900">
+                            <a th:href="@{'/inventory/' + ${item.id} + '/history'}" th:text="${item.name}"
+                               class="text-blue-600 font-medium hover:underline">장갑</a>
+                        </td>
+                        <td class="py-3 text-right text-gray-900" th:text="${quantities.get(item.id)} + ' 개'">0 개</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- 페이지네이션: InventoryController.list()가 in-memory로 계산한 currentPage/totalPages를
+                     그대로 사용함(품목 관리 화면의 Page 기반 페이징과 달리, 여기는 Pageable을 안 써서
+                     Page 객체가 아닌 평범한 int로 넘어옴 - REQ-NF-I-004 참고). 검색어(name)를 페이지
+                     링크마다 함께 넘겨서 페이지를 넘겨도 검색 조건이 유지되게 함. -->
+                <div class="flex items-center justify-center gap-1 mt-6 text-sm" th:if="${totalPages > 1}">
+                    <a th:if="${currentPage > 0}" th:href="@{/inventory/items(name=${keyword}, page=${currentPage - 1})}"
+                       class="px-2 py-1 text-gray-500 hover:text-gray-800">&lt;</a>
+                    <a th:each="p : ${#numbers.sequence(0, totalPages - 1)}"
+                       th:href="@{/inventory/items(name=${keyword}, page=${p})}"
+                       th:text="${p + 1}"
+                       th:class="${p == currentPage} ? 'px-3 py-1 rounded-md bg-blue-600 text-white font-medium' : 'px-3 py-1 rounded-md text-gray-600 hover:bg-gray-100'">1</a>
+                    <a th:if="${currentPage < totalPages - 1}" th:href="@{/inventory/items(name=${keyword}, page=${currentPage + 1})}"
+                       class="px-2 py-1 text-gray-500 hover:text-gray-800">&gt;</a>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+</body>
+</html>

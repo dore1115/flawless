@@ -12,6 +12,8 @@
     다른 부분은 전혀 건드리지 않음.
   - [품목 관리(item/list.html) 추가 시 이 파일도 한 줄 수정함] 같은 이유로 "품목 관리" 메뉴의
     href="#"를 실제 주소 "/inventory"로 바꿈. 다른 부분은 전혀 건드리지 않음.
+  - [재고 조회(inventory/list.html, IV-002) 추가 시 이 파일도 한 줄 수정함] 같은 이유로
+    "재고 조회" 메뉴의 href="#"를 실제 주소 "/inventory/items"로 변경.
 -->
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -40,7 +42,7 @@
         <!-- 왼쪽 사이드바 메뉴: 재고 조회 / 입고(현재 화면) / 출고 / 품목 관리 -->
         <aside class="w-48 bg-white border-r border-gray-200 shrink-0 py-4 px-3">
             <nav class="space-y-1 text-sm">
-                <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">재고 조회</a>
+                <a href="/inventory/items" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">재고 조회</a>
                 <!-- 지금 만든 화면이라 파란색 배경으로 "현재 위치"를 표시 -->
                 <a href="/inventory/inbound" class="block px-3 py-2 rounded-md bg-blue-600 text-white font-medium">입고</a>
                 <a href="/inventory/outbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">출고</a>

@@ -21,7 +21,6 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     Page<Item> findAllByDeletedFalse(Pageable pageable);
 
     // 입고 처리 시 품목 유효성 확인용: id가 존재하면서 동시에 삭제되지 않은 품목만 찾음
-    // (삭제된 품목 id로 요청이 오면 여기서 걸러져 Optional.empty()가 반환됨)
     Optional<Item> findByIdAndDeletedFalse(Long id);
 
     // 품목 등록(create) 시 사용: 이름으로 기존 품목을 찾음(삭제 여부와 무관하게 전체 대상).
@@ -34,4 +33,16 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 
     // 품목 수정(update) 시 사용: 자기 자신은 제외하고 같은 이름을 쓰는 다른 품목이 있는지 확인
     boolean existsByNameAndIdNot(String name, Long id);
+
+    // 재고 조회(IV-002) 화면의 검색(REQ-F-C-008 재고 검색)용: 활성 품목 중 이름에 검색어가
+    // 포함된 것만 조회.
+    List<Item> findAllByDeletedFalseAndNameContaining(String name);
+
+    // 재고 조회(IV-002) 화면이 품목 관리(IV-001)와 정렬 순서가 달라서(품목 관리는
+    // createdAt 오름차순 정렬, 재고 조회는 정렬 조건 없이 DB가 임의로 주는 순서를 그대로 씀 -
+    // 재활성화된 품목처럼 createdAt과 id 순서가 어긋난 품목이 있으면 두 화면 페이지가 서로
+    // 다르게 보임) 위 두 메서드와 결과는 같지만 정렬만 보장하는 버전을 새로 추가함
+    List<Item> findAllByDeletedFalseOrderByCreatedAtAsc();
+
+    List<Item> findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(String name);
 }

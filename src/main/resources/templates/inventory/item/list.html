@@ -14,6 +14,8 @@
               openRegisterModal(Boolean, 등록 검증 실패 시 모달을 연 채로 재표시),
               openEditItemId(수정 검증 실패 시 해당 행의 모달을 연 채로 재표시할 대상 품목 id)
   ※ REQ-NF-G-003/REQ-NF-I-002로 로그인만 되어 있으면 누구나 접근/등록/수정/삭제 가능.
+  ※ [재고 조회(inventory/list.html, IV-002) 추가 시 이 파일도 한 줄 수정함] 다른 화면들과 동일한
+    이유로 "재고 조회" 메뉴의 href="#"를 실제 주소 "/inventory/items"로 변경.
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -37,7 +39,7 @@
         <!-- 왼쪽 사이드바 메뉴: 재고 조회 / 입고 / 출고 / 품목 관리(현재 화면) -->
         <aside class="w-48 bg-white border-r border-gray-200 shrink-0 py-4 px-3">
             <nav class="space-y-1 text-sm">
-                <a href="#" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">재고 조회</a>
+                <a href="/inventory/items" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">재고 조회</a>
                 <a href="/inventory/inbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">입고</a>
                 <a href="/inventory/outbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">출고</a>
                 <!-- 지금 만든 화면이라 파란색 배경으로 "현재 위치"를 표시 -->
