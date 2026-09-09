@@ -40,15 +40,6 @@ public class AttendanceService {
                         .build()));
         attendance.clockIn(now);
     }
-
-    // 퇴근 처리
-    @Transactional
-    public void clockOut(Long employeeId) {
-        LocalDateTime now = LocalDateTime.now();
-
-        Attendance attendance = attendanceRepository.findByEmpIdAndWorkDate(
-                employeeId, now.toLocalDate()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)); //! REQ-NF-G-004: Exception handler 필요
-        attendance.clockOut(now);
-    }
+    //TODO 퇴근 처리
     //TODO 조회 처리
 }
