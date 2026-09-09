@@ -50,13 +50,6 @@ public class PositionService {
         return positionRepository.findByActiveTrue();
     }
 
-    //! REQ-NF-H-002 신설 시 검증 부재
-    //! PositionService.create()/DepartmentService.create()에 저장 전 두 가지 체크만 추가하면 됩니다.
-    //! 하나는 StringUtils.hasText(name)으로 공백 체크(실패 시 400),
-    //! 하나는 existsByPositionName/existsByDepartmentName(리포지토리에 새로 추가) 사전 조회로 중복 체크입니다.
-    //! 참고로 이 로직은 예전에 한 번 만들어서 전달했다가 요청 자체가 취소된 적이 있는데(REQ-F-S-005_직책신설_구현노트.md에 코드가 그대로 남아 있음),
-    //! 그때 만든 DuplicatePositionNameException/DuplicateDepartmentNameException 패턴을 그대로 재사용하면 새로 설계할 필요 없이
-    //! 바로 적용할 수 있습니다. 컨트롤러의 create()가 그 예외를 잡아서 "이미 존재하는 직책명입니다" 같은 플래시 메시지로 리다이렉트하는 구조입니다.
     @Transactional
     public void create(String positionName) {
         positionRepository.save(new Position(positionName));
@@ -67,11 +60,6 @@ public class PositionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 직책이 없습니다."));
     }
 
-    //! REQ-NF-H-005 감사로그 부재 해결
-    //! PositionHistory/DepartmentHistory JPA 엔티티(대상 FK, action, 처리자 FK, before/after 값, created_at)를 만들고,
-    //! PositionService.delete()/DepartmentService.delete() 안에서 deactivate() 직후 같은 트랜잭션으로 이력 한 건을 저장.
-    //! 처리자는 SecurityContextHolder.getContext().getAuthentication()에서 로그인한 사원을 꺼내면 됨.
-    //! REQ-NF-H-004에서 인증이 이미 확실히 걸려 있어야 의미가 생기니 순서상 H-004 다음
     @Transactional
     public void delete(Long id) {
         Position position = getPositionOrThrow(id);
