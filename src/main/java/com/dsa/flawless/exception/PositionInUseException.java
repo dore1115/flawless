@@ -14,7 +14,6 @@ public class PositionInUseException extends RuntimeException {
 
     private final Position position;
     private final List<Employee> employees;
-
     //! REQ-NF-H-001 소속 사원 목록 Entity 직접 응답
     //! H-001을 고치는 핵심은 한 줄로 말하면, "삭제 차단 시 넘기는 사원 목록을 Employee 엔티티가 아니라 이름만 담은 DTO로 바꿔치기" 입니다.
     //! 이름만 담은 작은 DTO 하나 새로 만듭니다 — dto/BlockingEmployeeView.java (필드는 name 하나).
