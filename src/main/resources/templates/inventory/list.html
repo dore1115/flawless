@@ -10,6 +10,10 @@
   //! [REQ-NF-I-001] Item 엔티티를 변환 없이 그대로 받아 화면에서 사용함(다른 화면들처럼 Row Dto로
   //! 변환하지 않음 - 의도적으로 남겨둔 결함). InventoryService.getCurrentQuantities() 주석 참고.
   ※ REQ-NF-G-003/REQ-NF-I-002로 로그인만 되어 있으면 누구나 접근 가능(별도 권한 검증 없음).
+
+  품목명을 누르면 재고 입출고 이력 조회(IV-005, REQ-F-S-012) 화면(GET /inventory/{id}/history,
+  InventoryController.history() 참고)으로 이동함 - 화면설계서 3-1 URL·Controller 표대로
+  별도 화면으로 구현
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -70,11 +74,10 @@
                     <tr th:if="${items.empty}">
                         <td colspan="2" class="py-6 text-center text-gray-400">등록된 데이터가 없습니다.</td>
                     </tr>
-                    <!-- 품목명을 누르면 재고 입출고 이력 조회(IV-005)로 이동함. 그 화면은 아직 별도
-                         브랜치에서 구현 예정이라 지금은 링크만 미리 만들어 둠(구현 전까지는 404). -->
+                    <!-- 품목명을 누르면 재고 입출고 이력 조회(IV-005) 화면으로 이동함 -->
                     <tr th:each="item : ${items}" class="border-b border-gray-100 last:border-0">
                         <td class="py-3 text-gray-900">
-                            <a th:href="@{'/inventory/' + ${item.id} + '/history'}" th:text="${item.name}"
+                            <a th:href="@{/inventory/{id}/history(id=${item.id})}" th:text="${item.name}"
                                class="text-blue-600 font-medium hover:underline">장갑</a>
                         </td>
                         <td class="py-3 text-right text-gray-900" th:text="${quantities.get(item.id)} + ' 개'">0 개</td>

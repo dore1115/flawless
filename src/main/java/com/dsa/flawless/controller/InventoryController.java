@@ -3,6 +3,7 @@ package com.dsa.flawless.controller;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
+import com.dsa.flawless.dto.StockHistoryRowDto;
 import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.domain.Item;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,11 +32,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * 재고 관련 화면/처리를 담당하는 컨트롤러.
  *
  * 화면설계서 3-1. URL·Controller 목록 표 기준:
- *   GET  /inventory/items     → list()          → inventory/list.html
- *   GET  /inventory/inbound   → inboundForm()   → inventory/inbound.html
- *   POST /inventory/inbound   → inbound()       → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
- *   GET  /inventory/outbound  → outboundForm()  → inventory/outbound.html
- *   POST /inventory/outbound  → outbound()      → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
+ *   GET  /inventory/items        → list()          → inventory/list.html
+ *   GET  /inventory/inbound      → inboundForm()   → inventory/inbound.html
+ *   POST /inventory/inbound      → inbound()       → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
+ *   GET  /inventory/outbound     → outboundForm()  → inventory/outbound.html
+ *   POST /inventory/outbound     → outbound()      → 처리 후 재고 조회(IV-002, /inventory/items)로 리다이렉트
+ *   GET  /inventory/{id}/history → history()       → inventory/history.html
  */
 @Controller
 @RequestMapping("/inventory")
@@ -207,7 +210,7 @@ public class InventoryController {
             model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
             return "inventory/outbound";
         }
-        
+
         // 현재 로그인한 사용자의 username(authentication.getName())으로 실제 사원을 조회해서 사용함.
         Employee employee = employeeRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new IllegalStateException(
@@ -281,5 +284,26 @@ public class InventoryController {
         model.addAttribute("currentPage", currentPage);
         model.addAttribute("totalPages", totalPages);
         return "inventory/list";
+    }
+
+    /*
+     * ================================================================
+     * 아래부터는 재고 입출고 이력 조회(IV-005) 기능을 위해 새로 추가한 부분.
+     * ================================================================
+     */
+
+    /**
+     * IV-005 재고 입출고 이력 조회(REQ-F-S-012). 재고 조회(IV-002) 목록에서 품목명을
+     * 누르면 이 화면으로 이동하고, "재고 조회로 돌아가기" 링크로 다시 IV-002로 돌아감(비고:
+     * "이력은 조회만 가능하며 수정·삭제할 수 없다" → 그래서 이 화면엔 조회용 GET 매핑만 있음).
+     */
+    @GetMapping("/{id}/history")
+    public String history(@PathVariable Long id, Model model) {
+        Item item = inventoryService.getItemOrThrow(id);
+        List<StockHistoryRowDto> histories = inventoryService.getItemStockHistories(id);
+
+        model.addAttribute("item", item);
+        model.addAttribute("histories", histories);
+        return "inventory/history";
     }
 }

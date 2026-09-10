@@ -15,4 +15,9 @@ public interface StockHistoryRepository extends JpaRepository<StockHistory, Long
     // moveType으로 IN/OUT을 구분하고, 최신순(createdAt 내림차순)으로 정렬.
     // 개수 제한은 Service에서 PageRequest.of(0, 5)로 넘겨 처리.
     List<StockHistory> findByMoveTypeOrderByCreatedAtDesc(MoveType moveType, Pageable pageable);
+
+    // 재고 입출고 이력 조회(IV-005, REQ-F-S-012)용: 특정 품목의 입고/출고 이력 전체를
+    // 최신순(createdAt 내림차순)으로 조회. "itemId"는 StockHistory.item(연관관계)의 id를
+    // 가리킴 - StockRepository.findByItemId()와 같은 방식으로 Spring Data가 자동 변환.
+    List<StockHistory> findByItemIdOrderByCreatedAtDesc(Long itemId);
 }
