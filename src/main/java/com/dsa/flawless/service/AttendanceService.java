@@ -1,21 +1,22 @@
 package com.dsa.flawless.service;
 
 import com.dsa.flawless.domain.Attendance;
-import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.exception.BusinessException;
 import com.dsa.flawless.exception.ErrorCode;
 import com.dsa.flawless.repository.AttendanceRepository;
 import com.dsa.flawless.repository.EmployeeRepository;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.rmi.NoSuchObjectException;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
+
 
 @Slf4j
 @Service
@@ -24,18 +25,19 @@ import java.util.Optional;
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
+    private final Clock clock;
 
     // 출근 처리
     @Transactional
-    public void clockIn(Long employeeId) {
+    public void clockIn(String username) {
         LocalTime CLOCK_IN_LIMIT = LocalTime.of(14,0,0);
         LocalDateTime now = LocalDateTime.now();
         if (now.toLocalTime().isAfter(CLOCK_IN_LIMIT)) {
             throw new RuntimeException("출근 가능 시각이 지났습니다."); //! REQ-NF-G-004: Exception handler 생성 필요
         }
-        Attendance attendance = attendanceRepository.findByEmpIdAndWorkDate(employeeId, now.toLocalDate()).orElseGet(()->attendanceRepository.save(
+        Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(username, now.toLocalDate()).orElseGet(()->attendanceRepository.save(
                 Attendance.builder()
-                        .employee(employeeRepository.getReferenceById(employeeId))
+                        .employee(employeeRepository.getReferenceByUsername(username))
                         .workDate(now.toLocalDate())
                         .build()));
         attendance.clockIn(now);
@@ -43,12 +45,31 @@ public class AttendanceService {
 
     // 퇴근 처리
     @Transactional
-    public void clockOut(Long employeeId) {
+    public void clockOut(String username) {
         LocalDateTime now = LocalDateTime.now();
 
-        Attendance attendance = attendanceRepository.findByEmpIdAndWorkDate(
-                employeeId, now.toLocalDate()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)); //! REQ-NF-G-004: Exception handler 필요
+        Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(
+                username, now.toLocalDate()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)); //! REQ-NF-G-004: Exception handler 필요
         attendance.clockOut(now);
     }
-    //TODO 조회 처리
+    // 조회 처리
+    //! 전체 조회 후 원하는 조건에 맞는 데이터를 조회하기 때문에 성능 저하를 유발할 가능성이 있다.
+    public List<Attendance> getList(String employeeUsername, Integer year, Integer month) {
+        List<Attendance> attendances = attendanceRepository.findAllByEmployeeUsername(employeeUsername);
+        List<Attendance> monthlyAttendance = new ArrayList<>();
+
+        LocalDate now = LocalDate.now(clock);
+        int targetYear = year == null ? now.getYear() : year;
+        int targetMonth = month == null ? now.getMonthValue() : month;
+        for (Attendance attendance : attendances) {
+            if (attendance.getWorkDate().getYear() == targetYear && attendance.getWorkDate().getMonthValue() == targetMonth ) {
+                monthlyAttendance.add(attendance);
+            }
+        }
+
+        return monthlyAttendance;
+    }
+
+
 }
+
