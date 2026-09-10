@@ -5,18 +5,22 @@ import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundHistoryDto;
 import com.dsa.flawless.dto.OutboundItemOptionDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
+import com.dsa.flawless.dto.StockHistoryRowDto;
+import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Item;
 import com.dsa.flawless.domain.MoveType;
 import com.dsa.flawless.domain.Stock;
 import com.dsa.flawless.domain.StockHistory;
 import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
+import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.repository.ItemRepository;
 import com.dsa.flawless.repository.StockHistoryRepository;
 import com.dsa.flawless.repository.StockRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +43,10 @@ public class InventoryService {
     private final ItemRepository itemRepository;
     private final StockRepository stockRepository;
     private final StockHistoryRepository stockHistoryRepository;
+
+    // 재고 입출고 이력 조회(IV-005)의 "처리자" 이름을 조회하기 위해 새로 주입함
+    // (StockHistory는 employeeId 값만 갖고 있어서 이름을 보려면 Employee를 따로 조회해야 함).
+    private final EmployeeRepository employeeRepository;
 
     /**
      * 입고 폼에 참고로 보여줄 "최근 입고 이력 5건"을 가져옴.
@@ -210,7 +218,7 @@ public class InventoryService {
     //! 많아지면 페이지를 몇 번째로 요청하든 매번 전체 데이터를 읽어옴.
     //! 해결 방법: ItemController.list()처럼 Pageable을 받는 findAllByDeletedFalse(Pageable)/findAllByDeletedFalseAnd
     //! NameContaining(...)에 Pageable을 추가해 DB가 LIMIT/OFFSET을 처리하도록 바꿈.
-    
+
     @Transactional(readOnly = true)
     public List<Item> getFilteredActiveItems(String name) {
         // [버그 수정] 품목 관리(IV-001, createdAt 오름차순)와 정렬 순서가 달라 페이지별로 보이는
@@ -236,7 +244,7 @@ public class InventoryService {
     //! 호출하는 N+1 쿼리임 - ItemService.getDashboardSummary(), InventoryService.
     //! getActiveItemOptionsWithStock()와 동일한 패턴의 결함을 재고 조회 화면에도 그대로 남겨둠.
     //! 해결 방법: 품목 id 목록을 한 번에 IN 절로 조회하는 배치 쿼리로 교체.
-    
+
     @Transactional(readOnly = true)
     public Map<Long, Integer> getCurrentQuantities(List<Item> items) {
         Map<Long, Integer> quantities = new LinkedHashMap<>();
@@ -247,5 +255,48 @@ public class InventoryService {
             quantities.put(item.getId(), currentQuantity);
         }
         return quantities;
+    }
+
+    /*
+     * ================================================================
+     * 아래부터는 재고 입출고 이력 조회(IV-005, REQ-F-S-012) 기능을 위해 새로 추가한 메서드임.
+     * ================================================================
+     */
+
+    /**
+     * IV-005 화면(품목별 입출고 이력 조회 페이지)에서 대상 품목의 이름 등을 보여주기 위해 사용.
+     * ItemService.getItemOrThrow()와 같은 패턴 - 존재하지 않는 id로 접근하면 ItemNotFoundException.
+     * 품목 관리(IV-001)에서 삭제(비활성화)한 품목이어도 과거 이력은 계속 조회할 수 있어야 하므로
+     * findByIdAndDeletedFalse가 아닌 findById를 씀.
+     */
+    @Transactional(readOnly = true)
+    public Item getItemOrThrow(Long itemId) {
+        return itemRepository.findById(itemId)
+                .orElseThrow(() -> new ItemNotFoundException("대상 품목이 없습니다. itemId=" + itemId));
+    }
+
+    /**
+     * 특정 품목의 입출고 이력을 처리 일시 최신순으로 가져옴(REQ-F-S-012 "처리 일시 최신순으로
+     * 정렬되어 표시된다"). "처리자 정보"까지 함께 보여줘야 해서, 이력들에 찍힌 employeeId를
+     * 모아 한 번에(배치로) 사원 이름을 조회함
+     */
+    @Transactional(readOnly = true)
+    public List<StockHistoryRowDto> getItemStockHistories(Long itemId) {
+        List<StockHistory> histories = stockHistoryRepository.findByItemIdOrderByCreatedAtDesc(itemId);
+        if (histories.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> employeeIds = histories.stream()
+                .map(StockHistory::getEmployeeId)
+                .collect(Collectors.toSet());
+        Map<Long, String> employeeNames = employeeRepository.findAllById(employeeIds).stream()
+                .collect(Collectors.toMap(Employee::getId, Employee::getName));
+
+        return histories.stream()
+                .map(history -> new StockHistoryRowDto(
+                        history,
+                        employeeNames.getOrDefault(history.getEmployeeId(), "알 수 없음")))
+                .collect(Collectors.toList());
     }
 }

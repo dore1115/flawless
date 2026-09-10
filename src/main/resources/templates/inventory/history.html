@@ -1,0 +1,97 @@
+<!--
+  templates/inventory/history.html
+  화면 ID: IV-005 (재고 입출고 이력 조회)
+  대응 Controller: InventoryController.history() [GET /inventory/{id}/history]
+  관련 요구사항: REQ-F-S-012
+
+  요구사항 원문: "사용자는 재고 입고/출고 처리로 발생한 수량 변경 내역을 목록으로 조회할 수 있다.
+  각 내역에는 품목, 처리 구분(입고/출고), 처리 수량, 처리 일시, 처리자 정보가 함께 표시된다."
+  비고: "이력은 조회만 가능하며 수정·삭제할 수 없다. 처리 일시 최신순으로 정렬되어 표시된다."
+  → 그래서 이 화면엔 조회용 GET 매핑만 있고, 수정/삭제 버튼은 없음.
+
+  Model 속성: item(Item, 이력을 보는 대상 품목 - 품목명 표시용),
+              histories(List<StockHistoryRowDto>, 해당 품목의 입출고 이력, 처리 일시 최신순)
+
+  화면설계서 3-1 URL·Controller 목록 표 기준 별도 화면으로 구현함(재고 조회(IV-002) 목록에서
+  품목명을 누르면 이 화면으로 이동, "재고 조회로 돌아가기" 링크로 다시 IV-002로 돌아감).
+-->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>재고 입출고 이력 조회</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+
+<div class="min-h-screen flex flex-col">
+
+    <!-- 상단 헤더: 다른 재고 화면들과 동일한 틀(짙은 남색 바) -->
+    <header class="bg-slate-900 text-white px-6 py-4 flex items-center shrink-0">
+        <span class="font-bold tracking-wide">ERP SYSTEM</span>
+        <span class="text-slate-400 ml-2">· 재고관리</span>
+    </header>
+
+    <div class="flex flex-1">
+
+        <!-- 왼쪽 사이드바 메뉴: 이 화면은 별도 메뉴 항목이 아니라 재고 조회에서 들어오는
+             하위 화면이라, 다른 화면들과 통일감을 주기 위해 "재고 조회"를 계속 강조해둠. -->
+        <aside class="w-48 bg-white border-r border-gray-200 shrink-0 py-4 px-3">
+            <nav class="space-y-1 text-sm">
+                <a href="/inventory/items" class="block px-3 py-2 rounded-md bg-blue-600 text-white font-medium">재고 조회</a>
+                <a href="/inventory/inbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">입고</a>
+                <a href="/inventory/outbound" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">출고</a>
+                <a href="/inventory" class="block px-3 py-2 rounded-md text-gray-500 hover:bg-gray-50">품목 관리</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 p-8">
+            <div class="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+
+                <div class="flex items-center justify-between mb-6">
+                    <h1 class="text-lg font-bold text-gray-900" th:text="${item.name} + ' 입출고 이력'">품목 입출고 이력</h1>
+                    <a th:href="@{/inventory/items}"
+                       class="text-sm text-gray-500 hover:text-gray-800">&larr; 재고 조회로 돌아가기</a>
+                </div>
+
+                <table class="w-full text-sm">
+                    <thead class="border-b border-gray-200">
+                    <tr>
+                        <th class="text-left font-semibold text-gray-500 py-2">구분</th>
+                        <th class="text-right font-semibold text-gray-500 py-2">수량</th>
+                        <th class="text-center font-semibold text-gray-500 py-2">처리 일시</th>
+                        <th class="text-right font-semibold text-gray-500 py-2">처리자</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 빈 상태: 화면설계서 공통 UI 규칙 - "등록된 데이터가 없습니다" 안내 (빈 화면 금지) -->
+                    <tr th:if="${#lists.isEmpty(histories)}">
+                        <td colspan="4" class="py-6 text-center text-gray-400">이력이 없습니다.</td>
+                    </tr>
+                    <!-- 입고 이력은 초록색 +N, 출고 이력은 빨간색 -N (입고/출고 화면의 "최근 이력" 색상 규칙과 동일) -->
+                    <tr th:each="h : ${histories}" class="border-b border-gray-100 last:border-0">
+                        <td class="py-3">
+                            <span th:if="${h.moveType == T(com.dsa.flawless.domain.MoveType).IN}"
+                                  class="text-green-600 font-medium">입고</span>
+                            <span th:unless="${h.moveType == T(com.dsa.flawless.domain.MoveType).IN}"
+                                  class="text-red-600 font-medium">출고</span>
+                        </td>
+                        <td class="py-3 text-right text-gray-900">
+                            <span th:if="${h.moveType == T(com.dsa.flawless.domain.MoveType).IN}"
+                                  class="text-green-600 font-medium" th:text="'+' + ${h.quantity}">+10</span>
+                            <span th:unless="${h.moveType == T(com.dsa.flawless.domain.MoveType).IN}"
+                                  class="text-red-600 font-medium" th:text="'-' + ${h.quantity}">-10</span>
+                        </td>
+                        <td class="py-3 text-center text-gray-500" th:text="${#temporals.format(h.processedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                        <td class="py-3 text-right text-gray-500" th:text="${h.employeeName}">홍길동</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+</body>
+</html>
