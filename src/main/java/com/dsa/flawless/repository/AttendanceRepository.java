@@ -6,14 +6,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
-    @Query("select a from Attendance a where a.employee.id=:employeeId and a.workDate=:date")
-    Optional<Attendance> findByEmpIdAndWorkDate(Long employeeId, LocalDate date);
+    Optional<Attendance> findByEmployeeUsernameAndWorkDate(String username, LocalDate date);
 
 
-    boolean existsByEmployeeIdAndWorkDate(Long empId, LocalDate today);
+    boolean existsByEmployeeIdAndWorkDate(Long employeeId, LocalDate today);
+
+    List<Attendance> findAllByEmployeeUsername(String username);
 }

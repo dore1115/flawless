@@ -27,3 +27,5 @@ server:
 #          exposure:
 #            include: health, prometheus
 #    설정 추가 필요
+app:
+  timezone: Asia/Seoul

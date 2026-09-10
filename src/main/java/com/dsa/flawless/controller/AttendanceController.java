@@ -1,11 +1,27 @@
 package com.dsa.flawless.controller;
 
+import com.dsa.flawless.config.EmployeeUserDetails;
+import com.dsa.flawless.domain.Attendance;
+import com.dsa.flawless.domain.Employee;
+import com.dsa.flawless.dto.CalendarDto;
+import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.AttendanceService;
+import com.dsa.flawless.service.CalendarService;
+import com.dsa.flawless.service.EmployeeUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -14,24 +30,51 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 public class AttendanceController {
     private final AttendanceService attendanceService;
+    private final CalendarService calendarService;
+    //! REQ-NF-G-003: 인가 아키텍처를 사용하지 않기에, 어떤 사용자의 요청인지 Session에서 직접 Principal을 통해 꺼내서 판단한다.
+    @GetMapping()
+    public String mainPage(
+            @SessionAttribute(name = "SPRING_SECURITY_CONTEXT", required = false) SecurityContext securityContext,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            Model model) {
+        Authentication authentication = securityContext != null ? securityContext.getAuthentication() : null;
+        Object principal = authentication != null ? authentication.getPrincipal() : null;
 
-    //! 의도적으로 PathVariable을 통해 ID를 받음으로써 다른 사람의 근태를 확인할 수 있는 결함
-    @GetMapping("/{id}")
-    public String mainPage(@PathVariable Long id, Model model) {
+        if (principal instanceof EmployeeUserDetails userDetails) {
+            String username = userDetails.getUsername();
+            List<Attendance> attendanceList = attendanceService.getList(username, year, month);
+            Map<Integer, Attendance> attendanceMap = attendanceList.stream()
+                    .collect(Collectors.toMap(a -> a.getWorkDate().getDayOfMonth(), a -> a));
 
-
-        return "/attendance/main";
+            model.addAttribute("attendanceMap", attendanceMap);
+            model.addAttribute("calendar", calendarService.createCalendar(year, month));
+            return "/attendance/main";
+        }
+        return "redirect:";
     }
-    //! 의도적으로 PathVariable을 통해 ID를 받음으로써 다른 사람의 출근 처리를 할 수 있는 결함
-    @PostMapping("/{id}/clockIn")
-    public String clockIn(@PathVariable Long id, Model model) {
-        attendanceService.clockIn(id);
-        return "redirect:/attendance";
+    //! REQ-NF-G-003: 인가 아키텍처를 사용하지 않기에, 어떤 사용자의 요청인지 Session에서 직접 Principal을 통해 꺼내서 판단한다.
+    @PostMapping("/clockIn")
+    public String clockIn(@SessionAttribute(name="SPRING_SECURITY_CONTEXT", required = false) SecurityContext securityContext, Model model) {
+        Object principal = Objects.requireNonNull(securityContext.getAuthentication()).getPrincipal();
+        if (principal instanceof EmployeeUserDetails userDetails) {
+            String username = userDetails.getUsername();
+            attendanceService.clockIn(username);
+            return "redirect:/attendance";
+        }
+
+        return "/index";
     }
-    //! 의도적으로 PathVariable을 통해 ID를 받음으로써 다른 사람의 퇴근 처리를 할 수 있는 결함
-    @PostMapping("/{id}/clockOut")
-    public String clockOut(@PathVariable Long id, Model model) {
-        attendanceService.clockOut(id);
-        return "redirect:/attendance";
+    //! REQ-NF-G-003: 인가 아키텍처를 사용하지 않기에, 어떤 사용자의 요청인지 Session에서 직접 Principal을 통해 꺼내서 판단한다.
+    @PostMapping("/clockOut")
+    public String clockOut(@SessionAttribute(name="SPRING_SECURITY_CONTEXT", required = false) SecurityContext securityContext, Model model) {
+        Object principal = Objects.requireNonNull(securityContext.getAuthentication()).getPrincipal();
+        if (principal instanceof EmployeeUserDetails userDetails) {
+            String username = userDetails.getUsername();
+            attendanceService.clockOut(username);
+            return "redirect:/attendance";
+        }
+
+        return "/index";
     }
 }
