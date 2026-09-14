@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s       # 결함 재현 시 짧은 스파이크도 놓치지 않도록 5s로 설정
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Spring Boot Actuator (micrometer-registry-prometheus) 스크레이핑
+  - job_name: "spring-boot-app"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["app:8080"]
+        labels:
+          service: "erp-backend"
+
+  # Prometheus 자기 자신 모니터링 (선택)
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

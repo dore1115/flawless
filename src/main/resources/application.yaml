@@ -7,7 +7,7 @@ spring:
     encoding: UTF-8
 
   profiles:
-    active: local
+    active:
 
 
 server:
@@ -27,5 +27,13 @@ server:
 #          exposure:
 #            include: health, prometheus
 #    설정 추가 필요
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  metrics:
+    tags:
+      application: erp-backend
 app:
   timezone: Asia/Seoul
