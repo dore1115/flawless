@@ -28,9 +28,12 @@ public class AttendanceService {
     private final EmployeeRepository employeeRepository;
     private final Clock clock;
 
-    public LocalDateTime getClockIn(String username) {
-        return attendanceRepository.findByEmployeeUsernameAndWorkDate(username, LocalDate.now()).orElseThrow(
-                () -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)).getClockIn();
+    public String getClockIn(String username) {
+        Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(username, LocalDate.now()).orElseGet(()->null);
+        if (attendance == null) {
+            return "";
+        }
+        return attendance.getClockIn().getHour() + ":" + attendance.getClockIn().getMinute();
 
     }
     // 출근 처리
