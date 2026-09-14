@@ -9,8 +9,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -18,11 +18,11 @@ import java.util.List;
 public class AttendanceBatchScheduler {
     private final EmployeeRepository employeeRepository;
     private final AttendanceRepository attendanceRepository;
-
+    private final Clock clock;
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     @Transactional
     public void createDailyAttendanceRecords() {
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        LocalDate today = LocalDate.now(clock);
 
         List<Employee> employee = employeeRepository.findAll();
         List<Attendance> newRecords = employee.stream()
@@ -34,5 +34,17 @@ public class AttendanceBatchScheduler {
                 ).toList();
 
         attendanceRepository.saveAll(newRecords);
+    }
+
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
+    @Transactional
+    public void clockOutBatchProcess() {
+        List<Attendance> attendances = attendanceRepository.findAllByClockInIsNotNullAndClockOutIsNull();
+
+        for (Attendance attendance : attendances) {
+            LocalDateTime clockIn = attendance.getClockIn();
+            attendance.clockOut(LocalDateTime.of(clockIn.getYear(), clockIn.getMonth(), clockIn.getDayOfMonth(), 18, 0, 0));
+        }
+
     }
 }
