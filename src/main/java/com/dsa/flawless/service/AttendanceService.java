@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.accessibility.AccessibleText;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,6 +28,11 @@ public class AttendanceService {
     private final EmployeeRepository employeeRepository;
     private final Clock clock;
 
+    public LocalDateTime getClockIn(String username) {
+        return attendanceRepository.findByEmployeeUsernameAndWorkDate(username, LocalDate.now()).orElseThrow(
+                () -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)).getClockIn();
+
+    }
     // 출근 처리
     @Transactional
     public void clockIn(String username) {

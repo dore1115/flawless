@@ -18,4 +18,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     boolean existsByEmployeeIdAndWorkDate(Long employeeId, LocalDate today);
 
     List<Attendance> findAllByEmployeeUsername(String username);
+
+
+    List<Attendance> findAllByClockInIsNotNullAndClockOutIsNull();
 }
