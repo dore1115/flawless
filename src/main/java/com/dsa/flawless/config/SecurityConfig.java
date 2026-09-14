@@ -27,7 +27,7 @@ public class SecurityConfig {
 						.loginPage("/login")
 						.loginProcessingUrl("/login")
 						.defaultSuccessUrl("/", true)
-						.failureHandler((req, res, exception) -> res.setStatus(401))
+						.failureUrl("/login")
 				)
 				.logout(logout -> logout
 						.logoutUrl("/logout")
