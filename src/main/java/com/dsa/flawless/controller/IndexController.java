@@ -36,7 +36,7 @@ public class IndexController {
             if (principal instanceof EmployeeUserDetails userDetails) {
                 String username = userDetails.getUsername();
                 model.addAttribute("itemSummary", itemService.getDashboardSummary());
-                model.addAttribute("attendanceSummary", attendanceService.getClockIn(username).getHour() + ":" + attendanceService.getClockIn(username).getMinute());
+                model.addAttribute("attendanceSummary", attendanceService.getClockIn(username));
                 model.addAttribute("employeeSummary", employeeService.getSumOfEmployee());
                 return "/index";
             }
