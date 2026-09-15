@@ -1,7 +1,6 @@
-package com.dsa.flawless.controller;
+package com.dsa.flawless.service;
 
 import com.dsa.flawless.repository.EmployeeRepository;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

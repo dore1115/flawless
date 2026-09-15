@@ -5,8 +5,8 @@
 services:
   app:
     build:
-      context: ./
-      dockerfile: Dockerfile
+      context: ../
+      dockerfile: container/Dockerfile
     container_name: erp-app
     ports:
       - "8080:8080"

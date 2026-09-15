@@ -7,7 +7,7 @@ spring:
     encoding: UTF-8
 
   profiles:
-    active:
+    active: local
 
 
 server:
