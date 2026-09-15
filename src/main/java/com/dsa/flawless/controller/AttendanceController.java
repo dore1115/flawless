@@ -42,9 +42,9 @@ public class AttendanceController {
 
             model.addAttribute("attendanceMap", attendanceMap);
             model.addAttribute("calendar", calendarService.createCalendar(year, month));
-            return "/attendance/main";
+            return "attendance/main";
         }
-        return "redirect:";
+        return "redirect:/";
     }
     //! REQ-NF-G-003: 인가 아키텍처를 사용하지 않기에, 어떤 사용자의 요청인지 Session에서 직접 Principal을 통해 꺼내서 판단한다.
     @PostMapping("/clockIn")
@@ -56,7 +56,7 @@ public class AttendanceController {
             return "redirect:/attendance";
         }
 
-        return "/index";
+        return "index";
     }
     //! REQ-NF-G-003: 인가 아키텍처를 사용하지 않기에, 어떤 사용자의 요청인지 Session에서 직접 Principal을 통해 꺼내서 판단한다.
     @PostMapping("/clockOut")
@@ -68,6 +68,6 @@ public class AttendanceController {
             return "redirect:/attendance";
         }
 
-        return "/index";
+        return "index";
     }
 }

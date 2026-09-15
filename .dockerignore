@@ -1,0 +1,14 @@
+# 빌드 컨텍스트는 프로젝트 루트다. 이미지 빌드는 컨테이너 안에서 gradle로 수행하므로
+# 로컬 산출물/캐시/IDE 설정은 전송하지 않는다.
+.git
+.gradle
+.idea
+build/
+**/.DS_Store
+*.iml
+
+container/.env
+container/grafana
+container/prometheus
+container/mysql-init
+container/k6

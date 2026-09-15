@@ -38,7 +38,7 @@ dependencies {
     // TODO(REQ-NF-G-007 부하테스트/모니터링 표준 부재): Prometheus 연동 의존성이 주석 처리돼 있다.
     // 부하테스트(JMeter 등)와 짝지어 개선 전/후 지표를 비교하려면 아래 주석 해제 +
     // application.yaml에 management.endpoints.web.exposure.include: prometheus 추가 필요.
-//    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
     annotationProcessor 'org.projectlombok:lombok'
 //    testImplementation 'org.springframework.boot:spring-boot-starter-batch-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'

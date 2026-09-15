@@ -1,14 +1,12 @@
 package com.dsa.flawless.controller;
 
 import com.dsa.flawless.config.EmployeeUserDetails;
-import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.AttendanceService;
-import com.dsa.flawless.service.EmployeeUserDetailsService;
+import com.dsa.flawless.service.EmployeeService;
 import com.dsa.flawless.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +36,7 @@ public class IndexController {
                 model.addAttribute("itemSummary", itemService.getDashboardSummary());
                 model.addAttribute("attendanceSummary", attendanceService.getClockIn(username));
                 model.addAttribute("employeeSummary", employeeService.getSumOfEmployee());
-                return "/index";
+                return "index";
             }
         }
         return "redirect:/login";

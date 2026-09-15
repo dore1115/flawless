@@ -19,7 +19,6 @@ import java.time.LocalDateTime;
 //! 여기 @Getter 없음
 @MappedSuperclass
 public abstract class BaseTimeEntity {
-    
     // 최초 저장(INSERT)될 때 값이 채워지고, 원칙적으로는 이후 수정 불가.
     // 해야 하는 특수한 경우를 위해 자식 클래스가 의도적으로 다시 채울 수 있게 열어둠
     @Column(name = "created_at", nullable = false)
@@ -28,7 +27,7 @@ public abstract class BaseTimeEntity {
     // save() 호출로 값이 바뀔 때마다(UPDATE) 자동으로 현재 시각으로 갱신.
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    
+
     // JPA 표준 생명주기 콜백: 이 엔티티가 처음 저장(INSERT)되기 "직전"에
     // 자동으로 호출됨. Hibernate가 실제 SQL INSERT를 날리기 전에 이 메서드를
     // 실행해서 createdAt/updatedAt에 현재 시각을 채워 넣음.

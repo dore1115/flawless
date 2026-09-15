@@ -1,0 +1,19 @@
+apiVersion: 1
+
+providers:
+  - name: "erp-dashboards"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
+
+# 이 폴더에 대시보드 JSON을 넣으면 Grafana 기동 시 자동 로드됨.
+# 직접 만들기 전에 아래 커뮤니티 대시보드를 Grafana UI(Import) 로 먼저 가져와서 시작하는 걸 추천:
+#   - 4701  : JVM (Micrometer)
+#   - 12900 : Spring Boot Statistics (Micrometer/Prometheus)
+# Import 방법: Grafana 좌측 메뉴 Dashboards > New > Import > 대시보드 ID 입력 > 데이터소스는 Prometheus 선택
