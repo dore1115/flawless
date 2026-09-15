@@ -29,7 +29,7 @@ public class AttendanceService {
     private final Clock clock;
 
     public String getClockIn(String username) {
-        Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(username, LocalDate.now()).orElseGet(()->null);
+        Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(username, LocalDate.now(clock)).orElseGet(()->null);
         if (attendance == null) {
             return "";
         }
@@ -40,7 +40,7 @@ public class AttendanceService {
     @Transactional
     public void clockIn(String username) {
         LocalTime CLOCK_IN_LIMIT = LocalTime.of(14,0,0);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         if (now.toLocalTime().isAfter(CLOCK_IN_LIMIT)) {
             throw new RuntimeException("출근 가능 시각이 지났습니다."); //! REQ-NF-G-004: Exception handler 생성 필요
         }
@@ -55,7 +55,7 @@ public class AttendanceService {
     // 퇴근 처리
     @Transactional
     public void clockOut(String username) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(
                 username, now.toLocalDate()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)); //! REQ-NF-G-004: Exception handler 필요

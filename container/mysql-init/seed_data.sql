@@ -3,6 +3,7 @@
 -- 직원 100명 / 1년치 근태 / 재고 품목 50종 / 입출고(출납) 기록 100,000건
 -- schema.sql 다음 순서로 실행되도록 파일명을 seed_data.sql로 둠 (알파벳순 schema < seed)
 -- =========================================================
+SET NAMES utf8mb4;
 USE erp;
 SET FOREIGN_KEY_CHECKS = 0;
 START TRANSACTION;
