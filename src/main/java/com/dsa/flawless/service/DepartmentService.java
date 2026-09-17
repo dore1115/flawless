@@ -27,11 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
  *     에러 페이지가 사용자에게 그대로 노출된다.
  * 개선 시 이 메서드 호출 전에 부서명 공백 여부와 중복 여부를 먼저 확인해 400으로 응답하도록 고친다.
  *
- * 결함 시딩(성능_보안_결함_시딩_매트릭스, REQ-NF-H-005 - 직책/부서 삭제 권한·감사로그 결함):
- * PositionService.delete()와 동일한 결정 — delete()는 의도적으로 (1) 호출자의 권한(Role)을
- * 확인하지 않고, (2) 누가/언제 삭제했는지 남기는 감사 로그도 기록하지 않는다. "소속 사원이 있으면
- * 삭제를 막는다"는 업무 규칙만 지킨다. 개선 시 컨트롤러 진입 전 인가 체크를 추가하고, 삭제 처리
- * 성공 시 처리자·시각·변경 전후 값을 department_history 테이블에 남기도록 고친다.
+ * REQ-NF-H-005 개선(권한 부분, 2026-09-17): PositionService와 동일한 패턴 —
+ * DepartmentController.delete()에 @PreAuthorize("hasRole('ADMIN_HR')")를 추가.
+ * 감사 로그는 이번 범위에서 제외했다 — 담당자가 REQ-NF-G-005 작업 때 함께 해결할 예정.
  */
 @Service
 @RequiredArgsConstructor

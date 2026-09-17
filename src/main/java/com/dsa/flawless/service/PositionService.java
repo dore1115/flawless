@@ -26,12 +26,11 @@ import org.springframework.web.server.ResponseStatusException;
  *     페이지가 사용자에게 그대로 노출된다.
  * 개선 시 이 메서드 호출 전에 직책명 공백 여부와 중복 여부를 먼저 확인해 400으로 응답하도록 고친다.
  *
- * 결함 시딩(성능_보안_결함_시딩_매트릭스, REQ-NF-H-005 - 직책/부서 삭제 권한·감사로그 결함):
- * delete()는 의도적으로 (1) 호출자의 권한(Role)을 확인하지 않고 — REQ-NF-G-003(전역 인가 아키텍처
- * 부재)과 동일하게, 로그인 여부와 무관하게 누구나 삭제를 실행할 수 있다 — (2) 누가/언제 삭제했는지
- * 남기는 감사 로그도 기록하지 않는다. "소속 사원이 있으면 삭제를 막는다"는 업무 규칙만 지킨다.
- * 개선 시 컨트롤러 진입 전 인가 체크를 추가하고, 삭제 처리 성공 시 처리자·시각·변경 전후 값을
- * position_history 테이블에 남기도록 고친다.
+ * REQ-NF-H-005 개선(권한 부분, 2026-09-17): PositionController.delete()에
+ * @PreAuthorize("hasRole('ADMIN_HR')")를 추가해 인사관리자만 삭제를 실행할 수 있다
+ * (REQ-NF-H-004에서 이미 켜진 @EnableMethodSecurity를 그대로 사용).
+ * 감사 로그(누가/언제 삭제했는지 기록)는 이번 범위에서 제외했다 — 담당자가 REQ-NF-G-005 작업 때
+ * 함께 해결할 예정이라, position_history 테이블 저장 로직은 그때 추가한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -67,11 +66,8 @@ public class PositionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 직책이 없습니다."));
     }
 
-    //! REQ-NF-H-005 감사로그 부재 해결
-    //! PositionHistory/DepartmentHistory JPA 엔티티(대상 FK, action, 처리자 FK, before/after 값, created_at)를 만들고,
-    //! PositionService.delete()/DepartmentService.delete() 안에서 deactivate() 직후 같은 트랜잭션으로 이력 한 건을 저장.
-    //! 처리자는 SecurityContextHolder.getContext().getAuthentication()에서 로그인한 사원을 꺼내면 됨.
-    //! REQ-NF-H-004에서 인증이 이미 확실히 걸려 있어야 의미가 생기니 순서상 H-004 다음
+    // REQ-NF-H-005 감사로그 부재는 REQ-NF-G-005 작업 때 함께 해결 예정 — 여기서는 권한 체크만
+    // 컨트롤러 쪽(@PreAuthorize)에 추가하고, delete() 본문은 그대로 둔다.
     @Transactional
     public void delete(Long id) {
         Position position = getPositionOrThrow(id);
