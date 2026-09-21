@@ -15,6 +15,10 @@ import java.beans.PropertyEditorSupport;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -254,25 +258,22 @@ public class InventoryController {
     //! 품목명/현재 수량만 담아 넘기도록 바꿨고, deleted/createdAt/updatedAt 같은 내부 필드는
     //! 더 이상 템플릿에서 접근할 수 없음. InventoryService.getCurrentQuantities()의 N+1 쿼리
     //! (REQ-NF-I-003)는 이번 수정 범위가 아니라 그대로 둠.
-    //! [REQ-NF-I-004] 페이지네이션 부재 결함: DB에는 Pageable 없이 조건에 맞는 전체 품목을
-    //! 한 번에 다 가져오게 해두고(InventoryService.getFilteredActiveItems() 참고), 여기서
-    //! 자바 메모리 상 subList()로 요청 페이지만 잘라냄(의도적으로 남겨둔 성능 결함). 해결 방법:
-    //! ItemController.list()처럼 Pageable을 받는 리포지토리 메서드로 바꿔서 DB가 LIMIT/OFFSET을
-    //! 처리하도록 함.
+    //! [REQ-NF-I-004] 해결 완료(2026-09-21): DB에는 Pageable 없이 조건에 맞는 전체 품목을 한 번에
+    //! 다 가져오게 해두고 여기서 자바 메모리 상 subList()로 요청 페이지만 잘라내던 결함(페이지네이션
+    //! 부재)을 고침. ItemController.list()와 같은 패턴으로 PageRequest(Pageable)를 만들어
+    //! InventoryService.getFilteredActiveItems()에 그대로 넘기고, DB가 LIMIT/OFFSET으로 걸러준
+    //! Page<Item> 결과를 그대로 씀 - currentPage/totalPages도 Page 객체가 계산해 주는 값을 그대로
+    //! 꺼내 쓰면 돼서, 기존에 직접 계산하던 코드(Math.ceil/subList 등)가 전부 없어짐. 정렬은 기존과
+    //! 동일하게 createdAt 오름차순을 유지(품목 관리(IV-001)와 페이지별 순서를 맞추기 위함 - 위
+    //! getFilteredActiveItems() 주석 참고).
 
     @GetMapping("/items")
     public String list(@RequestParam(required = false) String name,
                         @RequestParam(defaultValue = "0") int page,
                         Model model) {
-        List<Item> matchedItems = inventoryService.getFilteredActiveItems(name);
-
-        int totalCount = matchedItems.size();
-        int totalPages = (totalCount == 0) ? 1 : (int) Math.ceil((double) totalCount / STOCK_PAGE_SIZE);
-        int currentPage = Math.max(0, Math.min(page, totalPages - 1));
-
-        int fromIndex = Math.min(currentPage * STOCK_PAGE_SIZE, totalCount);
-        int toIndex = Math.min(fromIndex + STOCK_PAGE_SIZE, totalCount);
-        List<Item> pagedItems = matchedItems.subList(fromIndex, toIndex);
+        Pageable pageable = PageRequest.of(page, STOCK_PAGE_SIZE, Sort.by("createdAt").ascending());
+        Page<Item> matchedPage = inventoryService.getFilteredActiveItems(name, pageable);
+        List<Item> pagedItems = matchedPage.getContent();
 
         Map<Long, Integer> quantities = inventoryService.getCurrentQuantities(pagedItems);
         List<StockRowDto> stockRows = pagedItems.stream()
@@ -281,8 +282,8 @@ public class InventoryController {
 
         model.addAttribute("items", stockRows);
         model.addAttribute("keyword", name);
-        model.addAttribute("currentPage", currentPage);
-        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("currentPage", matchedPage.getNumber());
+        model.addAttribute("totalPages", Math.max(matchedPage.getTotalPages(), 1));
         return "inventory/list";
     }
 
