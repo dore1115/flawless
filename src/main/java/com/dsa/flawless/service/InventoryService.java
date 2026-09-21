@@ -234,11 +234,10 @@ public class InventoryService {
      * 위 getFilteredActiveItems()가 돌려준 품목들의 "현재 재고 수량"을 품목 id 기준으로 모아 담음.
      *
      */
-    //! [REQ-NF-I-001] 재고 조회 화면은 Item 엔티티를 변환 없이 그대로 Model에 담아 화면에 넘김
-    //! (다른 화면들은 ItemRowDto/OutboundItemOptionDto 등으로 변환해서 넘기는 것과 다름 - 의도적으로
-    //! 남겨둔 결함). 화면 표시에 필요 없는 등록/수정일시, deleted 플래그 등 내부 필드까지 템플릿에서
-    //! 그대로 접근 가능한 상태임. 해결 방법: 품목명/현재 수량만 담는 별도 응답 DTO(예: StockRowDto)를
-    //! 만들어 InventoryController.list()가 Item 대신 그 DTO 목록을 Model에 담도록 바꿈.
+    //! [REQ-NF-I-001] 해결 완료(2026-09-21): InventoryController.list()가 이 메서드의 결과(Map)를
+    //! 받아 StockRowDto로 변환해서 Model에 담도록 고쳐짐(dto/StockRowDto.java 참고). 이 메서드
+    //! 자체는 Map<Long,Integer>만 돌려주고 있었어서(Item 엔티티를 직접 넘기는 건 컨트롤러 쪽 문제였음)
+    //! 그대로 둠.
     //!
     //! [REQ-NF-I-003] 아래 for문이 품목 하나하나마다 stockRepository.findByItemId()를 개별
     //! 호출하는 N+1 쿼리임 - ItemService.getDashboardSummary(), InventoryService.

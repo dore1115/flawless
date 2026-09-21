@@ -4,6 +4,7 @@ import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.dto.StockHistoryRowDto;
+import com.dsa.flawless.dto.StockRowDto;
 import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.domain.Item;
@@ -248,6 +249,11 @@ public class InventoryController {
     /**
      * IV-002 재고 조회 화면(REQ-F-S-011). name이 있으면 재고 검색(REQ-F-C-008)까지 함께 처리함.
      */
+    //! [REQ-NF-I-001] 해결 완료(2026-09-21): 이 메서드가 Item 엔티티를 변환 없이 그대로 Model에
+    //! 담아 템플릿에 넘기던 결함을 수정함. StockRowDto(dto/StockRowDto.java 참고)로 변환해서
+    //! 품목명/현재 수량만 담아 넘기도록 바꿨고, deleted/createdAt/updatedAt 같은 내부 필드는
+    //! 더 이상 템플릿에서 접근할 수 없음. InventoryService.getCurrentQuantities()의 N+1 쿼리
+    //! (REQ-NF-I-003)는 이번 수정 범위가 아니라 그대로 둠.
     //! [REQ-NF-I-004] 페이지네이션 부재 결함: DB에는 Pageable 없이 조건에 맞는 전체 품목을
     //! 한 번에 다 가져오게 해두고(InventoryService.getFilteredActiveItems() 참고), 여기서
     //! 자바 메모리 상 subList()로 요청 페이지만 잘라냄(의도적으로 남겨둔 성능 결함). 해결 방법:
@@ -269,9 +275,11 @@ public class InventoryController {
         List<Item> pagedItems = matchedItems.subList(fromIndex, toIndex);
 
         Map<Long, Integer> quantities = inventoryService.getCurrentQuantities(pagedItems);
+        List<StockRowDto> stockRows = pagedItems.stream()
+                .map(item -> new StockRowDto(item, quantities.getOrDefault(item.getId(), 0)))
+                .toList();
 
-        model.addAttribute("items", pagedItems);
-        model.addAttribute("quantities", quantities);
+        model.addAttribute("items", stockRows);
         model.addAttribute("keyword", name);
         model.addAttribute("currentPage", currentPage);
         model.addAttribute("totalPages", totalPages);
