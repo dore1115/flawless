@@ -3,6 +3,7 @@ package com.dsa.flawless.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,6 +22,9 @@ public class SecurityConfig {
 		http
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
+						//! [REQ-NF-I-002] 물류관리자(ADMIN_IV) 전용으로 제한: 품목 등록/수정/삭제 + 입고/출고.
+						.requestMatchers(HttpMethod.POST, "/inventory", "/inventory/*/delete").hasRole("ADMIN_IV")
+						.requestMatchers(HttpMethod.POST, "/inventory/*").hasRole("ADMIN_IV")
 						.anyRequest().permitAll() //! REQ-NF-G-003으로 인하여 인가 아키텍쳐는 추후 적용
 				)
 				.formLogin(form -> form
