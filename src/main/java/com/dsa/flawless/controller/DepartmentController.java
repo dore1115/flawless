@@ -32,6 +32,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * 이미 활성화됨). 목록 조회·신설은 이번 범위에 포함하지 않았다.
  * 감사 로그(누가/언제 삭제했는지 기록)는 이번 변경에 포함하지 않았다 — 담당자가 REQ-NF-G-005
  * 작업 때 함께 해결할 예정이라 그때 department_history 저장 로직을 추가한다.
+ * REQ-NF-H-001 개선: {@link DepartmentInUseException#getEmployees()}가 이제
+ * {@code List<BlockingEmployeeView>}(이름만 담은 DTO)를 반환하므로, 아래 {@code blockingEmployees}
+ * 플래시 속성에는 더 이상 Employee 엔티티(비밀번호 해시 등 포함)가 실리지 않는다. 컨트롤러 코드 자체는
+ * 변경 없음 — 예외 쪽에서 이미 변환된 값을 그대로 전달만 한다.
  *
  * 비즈니스 로직은 {@link DepartmentService}에 있다 — 컨트롤러는 Repository를 직접 호출하지 않는다.
  */
