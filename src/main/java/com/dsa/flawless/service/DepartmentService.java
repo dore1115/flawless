@@ -10,22 +10,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
  * REQ-F-S-007(부서 신설)·REQ-F-S-008(부서 삭제)의 실제 처리를 담당하는 서비스 계층.
  *
- * 결함 시딩(성능_보안_결함_시딩_매트릭스, REQ-NF-H-002 - 입력값 서버단 검증 부재):
- * REQ-F-S-005(직책 신설)의 PositionService와 동일하게, create()는 의도적으로 부서명 중복 검사와
- * 필수값 검사를 하지 않는다. 화면(hr/department/list.html)의 <input required>는 브라우저에서만
- * 막을 뿐이라, 폼을 거치지 않고 API(POST /hr/departments)를 직접 두드리면 빈 문자열이나 중복된
- * 부서명도 그대로 저장을 시도하게 된다.
- *   - 빈 문자열("")은 department_name이 NOT NULL이라서 그대로 저장되어 버린다(빈 부서가 생김).
- *   - 중복된 부서명은 department 테이블의 UNIQUE 제약(uk_department_name)에 걸려 저장 자체는
- *     막히지만, 애플리케이션이 이를 미리 확인하지 않았기 때문에 DataIntegrityViolationException이
- *     그대로 터진다 — GlobalExceptionHandler가 없는 상태(REQ-NF-G-004)라 스택 트레이스가 담긴 500
- *     에러 페이지가 사용자에게 그대로 노출된다.
- * 개선 시 이 메서드 호출 전에 부서명 공백 여부와 중복 여부를 먼저 확인해 400으로 응답하도록 고친다.
+ * REQ-NF-H-002 개선 완료: PositionService.create()와 동일한 패턴 — 저장 전에 부서명 공백 여부와
+ * 중복 여부를 확인해 400(Bad Request)으로 응답한다. 중복 검사는
+ * {@link DepartmentRepository#existsByDepartmentNameAndActiveTrue}로 active(사용 중)인 부서만
+ * 대상으로 하므로, 삭제(비활성화)된 이름은 중복으로 치지 않고 재사용(재신설)할 수 있다 —
+ * 담당자 요청(2026-09-21)에 따른 결정.
  *
  * REQ-NF-H-005 개선(권한 부분, 2026-09-17): PositionService와 동일한 패턴 —
  * DepartmentController.delete()에 @PreAuthorize("hasRole('ADMIN_HR')")를 추가.
@@ -51,6 +46,12 @@ public class DepartmentService {
 
     @Transactional
     public void create(String departmentName) {
+        if (!StringUtils.hasText(departmentName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "부서명을 입력해 주세요.");
+        }
+        if (departmentRepository.existsByDepartmentNameAndActiveTrue(departmentName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 존재하는 부서명입니다.");
+        }
         departmentRepository.save(new Department(departmentName));
     }
 
