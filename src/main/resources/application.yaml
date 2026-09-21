@@ -8,12 +8,17 @@ spring:
   messages:
     basename: messages, errors
     encoding: UTF-8
-
   profiles:
     active: local
-
-
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Seoul
 server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
   servlet:
     session:
       tracking-modes: cookie
@@ -36,6 +41,9 @@ management:
   metrics:
     tags:
       application: erp-backend
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 app:
   timezone: Asia/Seoul
   # REQ-NF-S-001: 로그인/세션 정책값 (코드 수정 없이 여기서 변경)
