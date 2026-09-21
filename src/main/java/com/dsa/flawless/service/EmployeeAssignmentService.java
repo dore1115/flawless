@@ -30,6 +30,11 @@ import org.springframework.web.server.ResponseStatusException;
  * updateEmployeeInfo()는 호출자(로그인한 인사관리자인지)를 검증하지 않는다. 로그인 기능 자체가
  * 아직 없어 지금은 인증조차 없는 상태이며, 사원 id만 알면 누구든 임의 사원의 정보를 바꿀 수 있다.
  * 개선 시 이 메서드 호출 전에 인사관리자 인증/인가를 확인하는 코드를 추가한다.
+ *
+ * REQ-NF-H-007 개선 완료: findAll()이 기존에는 {@code employeeRepository.findAll()}을 그대로 썼는데,
+ * HR-001(사원 목록) 화면에서 department/position이 EAGER임에도 사원별로 개별 SELECT가 추가로
+ * 나가는 N+1이 실측으로 확인됐다. {@link EmployeeRepository#findAllWithDepartmentAndPosition()}
+ * (JOIN FETCH 사용)로 교체해 사원 목록 + 부서 + 직책을 단일 쿼리로 가져오도록 고쳤다.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,7 +46,7 @@ public class EmployeeAssignmentService {
 
     @Transactional(readOnly = true)
     public List<Employee> findAll() {
-        return employeeRepository.findAll();
+        return employeeRepository.findAllWithDepartmentAndPosition();
     }
 
     @Transactional(readOnly = true)
