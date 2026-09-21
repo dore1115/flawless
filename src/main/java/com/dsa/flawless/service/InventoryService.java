@@ -239,19 +239,27 @@ public class InventoryService {
     //! 자체는 Map<Long,Integer>만 돌려주고 있었어서(Item 엔티티를 직접 넘기는 건 컨트롤러 쪽 문제였음)
     //! 그대로 둠.
     //!
-    //! [REQ-NF-I-003] 아래 for문이 품목 하나하나마다 stockRepository.findByItemId()를 개별
-    //! 호출하는 N+1 쿼리임 - ItemService.getDashboardSummary(), InventoryService.
-    //! getActiveItemOptionsWithStock()와 동일한 패턴의 결함을 재고 조회 화면에도 그대로 남겨둠.
-    //! 해결 방법: 품목 id 목록을 한 번에 IN 절로 조회하는 배치 쿼리로 교체.
+    //! [REQ-NF-I-003] 해결 완료(2026-09-21): 품목 하나하나마다 stockRepository.findByItemId()를
+    //! 개별 호출하던 N+1 쿼리를 StockRepository.findByItemIdIn()으로 교체해서 재고 행을 한 번의
+    //! IN 절 쿼리로 모두 가져오도록 고침. 재고 기록이 아직 없는 품목(첫 입고 전)은 조회 결과에
+    //! 안 나오므로 getOrDefault(...,0)으로 0개 처리함(기존 동작과 동일).
+    //! ItemService.getDashboardSummary(), InventoryService.getActiveItemOptionsWithStock()에는
+    //! 여전히 같은 패턴의 N+1이 남아있음 - 이번 수정 범위(재고 조회 화면)가 아니라 그대로 둠.
 
     @Transactional(readOnly = true)
     public Map<Long, Integer> getCurrentQuantities(List<Item> items) {
+        List<Long> itemIds = items.stream()
+                .map(Item::getId)
+                .collect(Collectors.toList());
+
+        // 재고 행이 있는 품목만 한 번의 쿼리로 가져와서 품목 id → 수량 맵으로 만듦.
+        Map<Long, Integer> foundQuantities = stockRepository.findByItemIdIn(itemIds).stream()
+                .collect(Collectors.toMap(stock -> stock.getItem().getId(), Stock::getQuantity));
+
+        // 요청받은 품목 순서를 그대로 유지하면서, 재고 행이 없는 품목(첫 입고 전)은 0개로 채움.
         Map<Long, Integer> quantities = new LinkedHashMap<>();
         for (Item item : items) {
-            int currentQuantity = stockRepository.findByItemId(item.getId())
-                    .map(Stock::getQuantity)
-                    .orElse(0);
-            quantities.put(item.getId(), currentQuantity);
+            quantities.put(item.getId(), foundQuantities.getOrDefault(item.getId(), 0));
         }
         return quantities;
     }
