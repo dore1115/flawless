@@ -10,8 +10,13 @@ scrape_configs:
       - targets: ["app:8080"]
         labels:
           service: "erp-backend"
-
+    scheme: "https"
+    tls_config:
+      insecure_skip_verify: true
   # Prometheus 자기 자신 모니터링 (선택)
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ['cadvisor:8080']

@@ -40,3 +40,5 @@ src/main/.DS_Store
 src/.DS_Store
 *.DS_Store
 
+/container/certs/keystore.p12
+/src/main/resources/application-docker.yaml

@@ -10,12 +10,17 @@ services:
     container_name: erp-app
     ports:
       - "8080:8080"
+    volumes:
+      - ./certs/keystore.p12:/certs/keystore.p12:ro
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: ${DB_URL}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Seoul
+      # SSL을 위한 .p12파일 암호는 .env에 보관
+      SSL_PASSWORD: ${SSL_PASSWORD}
+      SSL_KEY_STORE_PATH: file:/certs/keystore.p12
     depends_on:
       mysql:
         condition: service_healthy
@@ -75,7 +80,20 @@ services:
       - prometheus
     networks:
       - erp-net
-
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8000:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    privileged: true
+    networks:
+      - erp-net
 networks:
   erp-net:
     driver: bridge
