@@ -23,7 +23,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -212,22 +214,21 @@ public class InventoryService {
      * findAllByDeletedFalse 계열 쿼리를 씀.
      *
      */
-    //! [REQ-NF-I-004] 페이지네이션 부재 결함: 요청한 페이지 크기만큼만 DB에서 가져오는 대신, 조건에
-    //! 맞는 전체 품목을 여기서 한 번에 다 가져옴 - 실제 페이지 자르기는 InventoryController.list()가
-    //! 이 결과를 받아 자바 메모리 상에서 subList()로 처리함(의도적으로 남겨둔 성능 결함). 데이터가
-    //! 많아지면 페이지를 몇 번째로 요청하든 매번 전체 데이터를 읽어옴.
-    //! 해결 방법: ItemController.list()처럼 Pageable을 받는 findAllByDeletedFalse(Pageable)/findAllByDeletedFalseAnd
-    //! NameContaining(...)에 Pageable을 추가해 DB가 LIMIT/OFFSET을 처리하도록 바꿈.
+    //! [REQ-NF-I-004] 해결 완료(2026-09-21): 요청한 페이지 크기만큼만 DB에서 가져오는 대신 조건에
+    //! 맞는 전체 품목을 여기서 한 번에 다 가져와 InventoryController.list()가 자바 메모리 상
+    //! subList()로 페이지를 잘라 쓰던 결함(페이지네이션 부재)을 고침. ItemController.list()와
+    //! 같은 패턴으로, 이 메서드가 Pageable을 그대로 받아 리포지토리에 넘기고 Page<Item>을 돌려주도록
+    //! 바꿔서 DB가 LIMIT/OFFSET을 처리하게 함(ItemRepository.findAllByDeletedFalseAndNameContaining
+    //! (String, Pageable) 참고). 정렬(createdAt 오름차순)은 예전처럼 메서드 이름에 고정하는 대신
+    //! 호출 측(InventoryController.list())이 Pageable에 Sort로 담아 넘김 - 품목 관리(IV-001)와
+    //! 정렬 순서를 맞춰야 페이지별로 보이는 품목이 서로 어긋나지 않는다는 원래 의도는 그대로 유지됨.
 
     @Transactional(readOnly = true)
-    public List<Item> getFilteredActiveItems(String name) {
-        // [버그 수정] 품목 관리(IV-001, createdAt 오름차순)와 정렬 순서가 달라 페이지별로 보이는
-        // 품목이 서로 어긋나던 문제 - 정렬을 보장하는 findAllByDeletedFalseOrderByCreatedAtAsc()/
-        // findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc()로 교체함(ItemRepository 참고).
+    public Page<Item> getFilteredActiveItems(String name, Pageable pageable) {
         if (name == null || name.isBlank()) {
-            return itemRepository.findAllByDeletedFalseOrderByCreatedAtAsc();
+            return itemRepository.findAllByDeletedFalse(pageable);
         }
-        return itemRepository.findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(name.trim());
+        return itemRepository.findAllByDeletedFalseAndNameContaining(name.trim(), pageable);
     }
 
     /**
