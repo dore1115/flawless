@@ -26,15 +26,21 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * 경우는 예외적 흐름이라 화면설계서 3-1 공통 예외 정책에 따라 GlobalExceptionHandler가 아닌
  * 컨트롤러 로컬에서 {@link DepartmentInUseException}을 잡아 원래 화면으로 리다이렉트 + 플래시
  * 메시지로 안내한다.
- * REQ-NF-H-005 개선(권한 부분): {@link #delete(Long, RedirectAttributes)}에
- * {@code @PreAuthorize("hasRole('ADMIN_HR')")}를 추가해 인사관리자만 부서를 삭제할 수 있도록
- * 제한했다(PositionController와 동일한 패턴, {@code @EnableMethodSecurity}는 REQ-NF-H-004에서
- * 이미 활성화됨). 목록 조회는 이번 범위에 포함하지 않았다.
+ * REQ-NF-G-003 개선 마무리(2026-09-22): PositionController와 동일한 이유로 이 컨트롤러 전체를
+ * {@code @PreAuthorize("hasRole('ADMIN_HR')")}로 제한한다 — {@link EmployeeController}(REQ-NF-H-004)와
+ * 같은 패턴. 원래는 delete()/create()에만 개별로 걸려 있어, ADMIN_HR이 아닌 계정도 로그인만 하면
+ * {@code GET /hr/departments} 화면 자체는 주소를 직접 입력해 볼 수 있었다. 이 화면으로 오는 유일한
+ * 경로(HR-001의 "부서 관리" 버튼)도 이미 ADMIN_HR 전용 {@link EmployeeController}에서만 노출되고,
+ * {@code DepartmentService}/{@code DepartmentRepository}를 이 컨트롤러 밖에서 쓰는 코드도 없어
+ * 목록 조회까지 클래스 레벨로 묶어도 다른 화면·서비스에 영향이 없다. {@code @EnableMethodSecurity}는
+ * REQ-NF-H-004에서 이미 활성화됨.
+ * REQ-NF-H-005 개선(권한 부분, 2026-09-17): 원래 {@link #delete(Long, RedirectAttributes)}에만
+ * 개별로 붙어 있던 {@code @PreAuthorize}가, 위 2026-09-22 정리로 클래스 레벨 어노테이션에 흡수됐다.
  * 신설(create) 권한 보완(2026-09-22, H-005와 별개): 요구사항정의서 #10(부서 신설)의 권한 칸이
  * "인사관리자"로 명시돼 있음에도 {@link #create(DepartmentCreateForm, RedirectAttributes)}에는
- * 권한 체크가 없어 EMPLOYEE 계정도 부서를 새로 만들 수 있었다. delete()와 동일한
- * {@code @PreAuthorize("hasRole('ADMIN_HR')")}를 추가해 막았다 — PositionController와 동일한 이유로
- * 결함 시딩 매트릭스의 어느 REQ-NF-H 항목에도 속하지 않는다.
+ * 원래 권한 체크가 없어 EMPLOYEE 계정도 부서를 새로 만들 수 있었다 — 이 역시 클래스 레벨
+ * 어노테이션으로 함께 해결됐다. PositionController와 동일한 이유로 결함 시딩 매트릭스의 어느
+ * REQ-NF-H 항목에도 속하지 않는다.
  * REQ-NF-H-005 개선(감사 로그, 2026-09-22): 삭제 성공 시 {@link DepartmentService#delete(Long)}가
  * {@code department_history}에 이력(요청자/시각/삭제 전 이름)을 append한다 — 자세한 내용은
  * {@link DepartmentService}의 클래스 주석 참고. 컨트롤러 코드 자체는 변경 없음(서비스 내부 구현).
@@ -48,6 +54,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/hr/departments")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN_HR')")
 public class DepartmentController {
 
     private final DepartmentService departmentService;
@@ -61,11 +68,9 @@ public class DepartmentController {
         return "hr/department/list";
     }
 
-    // 요구사항정의서 #10(부서 신설)의 권한 칸도 "인사관리자"로 명시돼 있는데 create()에는 권한
-    // 체크가 빠져 있었다(PositionController와 동일한 누락 — H-005는 "삭제" Authority만 지적한
-    // 항목이라 create()는 다루지 않았음). delete()에 이미 쓰던 것과 동일한 @PreAuthorize를 그대로
-    // 적용해 EMPLOYEE 계정이 부서를 새로 만들 수 있던 문제를 막는다(2026-09-22).
-    @PreAuthorize("hasRole('ADMIN_HR')")
+    // 요구사항정의서 #10(부서 신설)의 권한 칸도 "인사관리자"로 명시돼 있는데 원래 create()에는
+    // 권한 체크가 빠져 있었다(PositionController와 동일한 누락). 2026-09-22에 클래스 레벨
+    // @PreAuthorize로 함께 해결됨(위 클래스 주석 참고).
     @PostMapping
     public String create(@ModelAttribute DepartmentCreateForm form, RedirectAttributes redirectAttributes) {
         departmentService.create(form.getDepartmentName());
@@ -75,8 +80,8 @@ public class DepartmentController {
     }
 
     // REQ-NF-H-005 개선(권한 부분): 인사관리자(ADMIN_HR)만 부서를 삭제할 수 있도록 제한.
-    // ADMIN_HR이 아닌 계정이 호출하면 403으로 차단된다.
-    @PreAuthorize("hasRole('ADMIN_HR')")
+    // ADMIN_HR이 아닌 계정이 호출하면 403으로 차단된다. 2026-09-22부터는 클래스 레벨
+    // @PreAuthorize가 이 메서드를 포함한 컨트롤러 전체를 이미 막고 있다(위 클래스 주석 참고).
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {

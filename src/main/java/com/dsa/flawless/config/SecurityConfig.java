@@ -17,8 +17,9 @@ import org.springframework.security.web.SecurityFilterChain;
 //! 로그인 여부와 무관하게 전체 API가 열려 있었다. 로그인 화면(/login)과 정적 리소스(/js/**)만
 //! permitAll로 남기고 나머지는 전부 authenticated()로 바꿔서, 최소한 "로그인은 필수"라는 전역
 //! 게이트가 걸리도록 했다. 세부 권한(Role)은 이 전역 게이트 위에 각 컨트롤러의
-//! @PreAuthorize(hasRole(...))가 개별적으로 얹히는 구조 — H-004(EmployeeController)는 이미
-//! 적용됐고, H-005(PositionController/DepartmentController), I-002(재고 관리) 등은 아직 남아 있다.
+//! @PreAuthorize(hasRole(...))가 개별적으로 얹히는 구조 — H-004(EmployeeController),
+//! H-005(PositionController/DepartmentController, 2026-09-22에 목록 조회까지 클래스 레벨로 확장)는
+//! 김도영 담당 범위에서 이미 적용 완료. I-002(재고 관리) 등 다른 모듈은 아직 남아 있다(담당자 확인 필요).
 public class SecurityConfig {
 
 	@Bean
