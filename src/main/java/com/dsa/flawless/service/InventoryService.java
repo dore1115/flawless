@@ -176,10 +176,14 @@ public class InventoryService {
                         "등록되지 않았거나 비활성화된 품목입니다. itemId=" + request.getItemId()));
 
         // 2) 현재 재고 수량 확인. 재고 기록 자체가 없으면 0개로 취급함(위 처리 순서 설명 참고).
-        //! [REQ-NF-I-005] 아래 "조회(findByItemId) → 비교 → 차감(decrease) → 저장" 구간은 락이 없어서
-        //! 동시 요청에 안전하지 않음 - 이 메서드 전체가 그 결함의 실제 발생 지점임. 증상과 해결 방법
-        //! (낙관적/비관적 락)은 Stock.java의 주석 처리된 @Version 필드 위 주석에 자세히 적어둠.
-        Stock stock = stockRepository.findByItemId(item.getId()).orElse(null);
+        //! [REQ-NF-I-005] 해결: "조회 → 비교 → 차감(decrease) → 저장" 네 단계 사이에 락이 없어
+        //! 동시 요청 시 Lost Update가 발생하던 결함(증상과 방법 선택 이유는 Stock.java 및
+        //! StockRepository.findByItemIdForUpdate() 주석 참고)을 비관적 락으로 해결함.
+        //! findByItemId() 대신 findByItemIdForUpdate()를 써서, 이 트랜잭션이 해당 재고 행을 조회하는
+        //! 시점에 DB가 SELECT ... FOR UPDATE로 행을 잠그도록 함 - 트랜잭션이 커밋/롤백될 때까지 다른
+        //! 출고 트랜잭션은 같은 행에 대한 잠금을 기다려야 하므로, 두 트랜잭션이 같은 "차감 전" 수량을
+        //! 동시에 읽어 서로의 갱신을 덮어쓰는 상황 자체가 차단됨.
+        Stock stock = stockRepository.findByItemIdForUpdate(item.getId()).orElse(null);
         int currentQuantity = (stock != null) ? stock.getQuantity() : 0;
 
         // 3) 재고 부족 검사 - 요청 수량이 현재 재고보다 많으면 처리하지 않고 예외를 던져 중단.
