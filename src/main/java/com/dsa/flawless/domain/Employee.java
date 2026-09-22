@@ -6,14 +6,20 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-//! REQ-NF-H-008 — 인덱스 부재
-//! 1. 엔티티에 @Table(indexes = {@Index(columnList = "position_id"), @Index(columnList = "department_id")})를 추가
-//! 	(문서화 목적, ddl-auto=validate라 실제로 DB를 바꾸진 않음).
-//! 2. 실제 DB에 ALTER TABLE employee ADD INDEX idx_employee_position_id (position_id),
-//! 	ADD INDEX idx_employee_department_id (department_id);를 직접 실행(또는 schema.sql/마이그레이션 파일로 관리)
+// REQ-NF-H-008 개선 완료: 직책/부서 삭제 시 "소속 사원 조회"(PositionRepository.findByPosition,
+// DepartmentRepository.findByDepartment)가 employee.position_id/department_id로 조회하는데
+// 인덱스가 없어 Full scan이 발생하던 문제. 아래 indexes는 문서화 목적이다 — 이 프로젝트는
+// hibernate.ddl-auto=validate라 Hibernate가 시작 시 컬럼 존재 여부만 검증할 뿐 인덱스를 만들거나
+// 강제하지 않는다. 실제 인덱스는 container/mysql-init/schema.sql의 employee 테이블 정의에
+// idx_employee_department_id / idx_employee_position_id로 추가해뒀다 — 그게 실제 DB 스키마를
+// 결정하는 원본이다.
 @Table(
 		name="employee",
-		uniqueConstraints = @UniqueConstraint(columnNames = {"username"})
+		uniqueConstraints = @UniqueConstraint(columnNames = {"username"}),
+		indexes = {
+				@Index(name = "idx_employee_department_id", columnList = "department_id"),
+				@Index(name = "idx_employee_position_id", columnList = "position_id")
+		}
 )
 
 // TODO(REQ-NF-M-003 하드 삭제 + 감사로그 부재): 아직 사원 삭제 기능 자체가 없지만,
