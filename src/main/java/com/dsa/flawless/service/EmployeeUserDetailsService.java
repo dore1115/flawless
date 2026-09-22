@@ -36,7 +36,7 @@ public class EmployeeUserDetailsService implements UserDetailsService {
 		// (요청 실패 로그에도 입력 비밀번호 원문을 남기지 않는다 — REQ-F-W-005 비고와 동일한 원칙)
 		log.info("===== 사용자 찾음 =====");
 		log.info("username = {}", employee.getUsername());
-		log.info("password = {}", employee.getPassword());
+//		log.info("password = {}", employee.getPassword());
 		log.info("role = {}", employee.getRole());
 		
 		return new EmployeeUserDetails(employee);
