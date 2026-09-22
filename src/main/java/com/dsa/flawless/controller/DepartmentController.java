@@ -29,9 +29,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * REQ-NF-H-005 개선(권한 부분): {@link #delete(Long, RedirectAttributes)}에
  * {@code @PreAuthorize("hasRole('ADMIN_HR')")}를 추가해 인사관리자만 부서를 삭제할 수 있도록
  * 제한했다(PositionController와 동일한 패턴, {@code @EnableMethodSecurity}는 REQ-NF-H-004에서
- * 이미 활성화됨). 목록 조회·신설은 이번 범위에 포함하지 않았다.
- * 감사 로그(누가/언제 삭제했는지 기록)는 이번 변경에 포함하지 않았다 — 담당자가 REQ-NF-G-005
- * 작업 때 함께 해결할 예정이라 그때 department_history 저장 로직을 추가한다.
+ * 이미 활성화됨). 목록 조회는 이번 범위에 포함하지 않았다.
+ * 신설(create) 권한 보완(2026-09-22, H-005와 별개): 요구사항정의서 #10(부서 신설)의 권한 칸이
+ * "인사관리자"로 명시돼 있음에도 {@link #create(DepartmentCreateForm, RedirectAttributes)}에는
+ * 권한 체크가 없어 EMPLOYEE 계정도 부서를 새로 만들 수 있었다. delete()와 동일한
+ * {@code @PreAuthorize("hasRole('ADMIN_HR')")}를 추가해 막았다 — PositionController와 동일한 이유로
+ * 결함 시딩 매트릭스의 어느 REQ-NF-H 항목에도 속하지 않는다.
+ * REQ-NF-H-005 개선(감사 로그, 2026-09-22): 삭제 성공 시 {@link DepartmentService#delete(Long)}가
+ * {@code department_history}에 이력(요청자/시각/삭제 전 이름)을 append한다 — 자세한 내용은
+ * {@link DepartmentService}의 클래스 주석 참고. 컨트롤러 코드 자체는 변경 없음(서비스 내부 구현).
  * REQ-NF-H-001 개선: {@link DepartmentInUseException#getEmployees()}가 이제
  * {@code List<BlockingEmployeeView>}(이름만 담은 DTO)를 반환하므로, 아래 {@code blockingEmployees}
  * 플래시 속성에는 더 이상 Employee 엔티티(비밀번호 해시 등 포함)가 실리지 않는다. 컨트롤러 코드 자체는
@@ -55,6 +61,11 @@ public class DepartmentController {
         return "hr/department/list";
     }
 
+    // 요구사항정의서 #10(부서 신설)의 권한 칸도 "인사관리자"로 명시돼 있는데 create()에는 권한
+    // 체크가 빠져 있었다(PositionController와 동일한 누락 — H-005는 "삭제" Authority만 지적한
+    // 항목이라 create()는 다루지 않았음). delete()에 이미 쓰던 것과 동일한 @PreAuthorize를 그대로
+    // 적용해 EMPLOYEE 계정이 부서를 새로 만들 수 있던 문제를 막는다(2026-09-22).
+    @PreAuthorize("hasRole('ADMIN_HR')")
     @PostMapping
     public String create(@ModelAttribute DepartmentCreateForm form, RedirectAttributes redirectAttributes) {
         departmentService.create(form.getDepartmentName());
