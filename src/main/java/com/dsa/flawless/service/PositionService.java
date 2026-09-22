@@ -2,13 +2,16 @@ package com.dsa.flawless.service;
 
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Position;
+import com.dsa.flawless.domain.PositionHistory;
 import com.dsa.flawless.exception.PositionInUseException;
 import com.dsa.flawless.repository.EmployeeRepository;
+import com.dsa.flawless.repository.PositionHistoryRepository;
 import com.dsa.flawless.repository.PositionRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,11 +31,18 @@ import org.springframework.web.server.ResponseStatusException;
  * (참고: 이 프로젝트엔 아직 GlobalExceptionHandler가 없어서(REQ-NF-G-004) ResponseStatusException도
  * 화면에는 Whitelabel 에러 페이지로 나간다 — EmployeeController 쪽 검증과 동일한 한계.)
  *
- * REQ-NF-H-005 개선(권한 부분, 2026-09-17): PositionController.delete()에
- * @PreAuthorize("hasRole('ADMIN_HR')")를 추가해 인사관리자만 삭제를 실행할 수 있다
- * (REQ-NF-H-004에서 이미 켜진 @EnableMethodSecurity를 그대로 사용).
- * 감사 로그(누가/언제 삭제했는지 기록)는 이번 범위에서 제외했다 — 담당자가 REQ-NF-G-005 작업 때
- * 함께 해결할 예정이라, position_history 테이블 저장 로직은 그때 추가한다.
+ * REQ-NF-H-005 개선 완료 — 삭제 Authority 미비 + 감사로그 부재:
+ * (1) PositionController.delete()에 @PreAuthorize("hasRole('ADMIN_HR')")를 추가해 인사관리자만
+ *     삭제를 실행할 수 있다(REQ-NF-H-004에서 이미 켜진 @EnableMethodSecurity를 그대로 사용,
+ *     2026-09-17).
+ * (2) delete()가 직책 비활성화에 성공한 뒤 {@link PositionHistory#ofDelete}로 "누가(employeeId)/
+ *     언제(createdAt)/무엇을(beforeValue=삭제 직전 직책명)" 삭제했는지 position_history 테이블에
+ *     append한다(2026-09-22). 처리자는 SecurityContextHolder의 Authentication.getName()
+ *     (= EmployeeUserDetails.getUsername())으로 알아낸 뒤
+ *     {@link EmployeeRepository#getReferenceByUsername}으로 id만 얻어 저장한다 — 감사 로그는
+ *     "누가"만 식별하면 되므로 Employee 엔티티 전체를 로딩하지 않는다. 낙관적 락 충돌(409)로
+ *     삭제 자체가 실패하면 예외가 delete() 밖으로 전파돼 트랜잭션이 롤백되므로, 이력도 함께
+ *     기록되지 않는다(직책 비활성화와 이력 기록이 하나의 트랜잭션으로 원자적으로 묶여 있음).
  *
  * REQ-NF-H-009 개선 완료 — 동시성 문제(Lost Update):
  * delete()가 낙관적 락 없이 곧바로 save()를 호출해, 같은 직책에 대한 두 삭제 요청이 거의 동시에
@@ -48,6 +58,7 @@ public class PositionService {
 
     private final PositionRepository positionRepository;
     private final EmployeeRepository employeeRepository;
+    private final PositionHistoryRepository positionHistoryRepository;
 
     /**
      * HR-003(직책 목록) 화면에 보여줄 목록. 담당자 요청(2026-09-02)에 따라 삭제(비활성화)된 직책은
@@ -74,8 +85,6 @@ public class PositionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 직책이 없습니다."));
     }
 
-    // REQ-NF-H-005 감사로그 부재는 REQ-NF-G-005 작업 때 함께 해결 예정 — 여기서는 권한 체크만
-    // 컨트롤러 쪽(@PreAuthorize)에 추가하고, delete() 본문은 그대로 둔다.
     @Transactional
     public void delete(Long id) {
         Position position = getPositionOrThrow(id);
@@ -91,5 +100,14 @@ public class PositionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "다른 요청이 먼저 이 직책을 처리했습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.");
         }
+        // REQ-NF-H-005 개선(감사 로그): 삭제가 실제로 성공한 뒤에만 이력을 남긴다.
+        positionHistoryRepository.save(PositionHistory.ofDelete(position, currentEmployeeId()));
+    }
+
+    // REQ-NF-H-005 개선(감사 로그): 현재 로그인한 사용자의 employee id를 얻는다. getReferenceByUsername()은
+    // EntityManager.getReference() 기반이라 별도 SELECT 없이 id가 채워진 프록시만 돌려준다.
+    private Long currentEmployeeId() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return employeeRepository.getReferenceByUsername(username).getId();
     }
 }
