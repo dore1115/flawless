@@ -7,6 +7,7 @@ import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.repository.PositionRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,13 @@ import org.springframework.web.server.ResponseStatusException;
  * (REQ-NF-H-004에서 이미 켜진 @EnableMethodSecurity를 그대로 사용).
  * 감사 로그(누가/언제 삭제했는지 기록)는 이번 범위에서 제외했다 — 담당자가 REQ-NF-G-005 작업 때
  * 함께 해결할 예정이라, position_history 테이블 저장 로직은 그때 추가한다.
+ *
+ * REQ-NF-H-009 개선 완료 — 동시성 문제(Lost Update):
+ * delete()가 낙관적 락 없이 곧바로 save()를 호출해, 같은 직책에 대한 두 삭제 요청이 거의 동시에
+ * 들어오면 나중에 flush되는 쪽이 예외 없이 조용히 성공(사실상 무해하지만, 향후 직책명 변경 등
+ * 다른 필드를 다루는 기능이 추가되면 진짜 Lost Update로 번질 수 있는 상태)해버릴 수 있었다.
+ * {@link com.dsa.flawless.domain.Position#version}에 @Version 필드를 추가하고, save() 대신
+ * saveAndFlush()를 써서 메서드 안에서 즉시 버전 충돌을 확인하도록 했다.
  */
 @Service
 @RequiredArgsConstructor
@@ -76,6 +84,12 @@ public class PositionService {
             throw new PositionInUseException(position, holders);
         }
         position.deactivate();
-        positionRepository.save(position);
+        try {
+            positionRepository.saveAndFlush(position);
+        } catch (OptimisticLockingFailureException e) {
+            // REQ-NF-H-009 개선: 다른 요청이 이 직책을 먼저 수정·커밋해 버전이 바뀐 상태.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "다른 요청이 먼저 이 직책을 처리했습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.");
+        }
     }
 }
