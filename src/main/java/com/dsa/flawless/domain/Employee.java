@@ -65,6 +65,20 @@ public class Employee extends BaseTimeEntity{
 	@Column(nullable = false, length = 20) @Enumerated(EnumType.STRING)
 	private Role role;
 
+	// REQ-NF-H-009 개선 완료: 동시성 문제(Lost Update).
+	// updateEmployeeInfo()가 낙관적 락 없이 곧바로 save()를 호출해, 두 요청이 거의 동시에 같은
+	// 사원 행을 수정하면 나중에 커밋되는 쪽이 먼저 커밋된 변경 내용을 그대로 덮어써버리는 문제가
+	// 있었다. @Version을 추가하면 Hibernate가 저장(UPDATE) 시점마다
+	// "UPDATE employee SET ... , version = version+1 WHERE id=? AND version=?" 형태로
+	// 자신이 읽은 시점의 version 값을 WHERE 조건에 함께 걸고, 그 사이 다른 트랜잭션이 먼저
+	// 커밋해 version이 바뀌었으면 UPDATE 대상 행이 0건이 되어
+	// OptimisticLockingFailureException을 던진다 — 이를
+	// {@link com.dsa.flawless.service.EmployeeAssignmentService#updateEmployeeInfo}에서 잡아
+	// 409(Conflict)로 응답하도록 고쳤다.
+	@Version
+	@Column(name = "version", nullable = false)
+	private Integer version = 0;
+
 	@Builder
 	public Employee(String username, String password, String name, String address, String email,
 	                String phone, Department department, Position position, Role role) {
