@@ -36,14 +36,15 @@ public class EmployeeRegisterService {
 		Department department = em.getReference(Department.class, departmentId);
 		Position position = em.getReference(Position.class, positionId);
 		
-		// TODO(REQ-NF-M-001 권한 상승 방지 부재): 이 메서드를 호출하는 컨트롤러가
-		// @PreAuthorize("hasRole('ADMIN_HR')")로 막혀 있어 "일반 사용자가 직접 호출"하는
-		// 경로는 현재 차단돼 있지만, role 문자열 자체는 여전히 클라이언트가 보낸 값을
-		// 그대로 신뢰해서 Role.valueOf()에 넘긴다. 잘못된 값이 오면 IllegalArgumentException이
-		// 그대로 튀어나가 500 에러가 되므로, 허용 목록 검증 + 실패 시 사용자 메시지 처리 필요.
-		// (메서드 레벨 시큐리티가 실제로 켜져 있는지 - @EnableMethodSecurity 설정 여부도 함께 점검)
-		
-		Role roleValue = Role.valueOf(role);
+		// REQ-NF-M-001 개선: 요청자가 인사관리자인지는 EmployeeRegisterController.checkAdminHr()에서 검사한다.
+		// 여기서는 클라이언트가 보낸 role 문자열을 그대로 믿지 않고, 허용된 값(ADMIN_HR/ADMIN_IV/EMPLOYEE)만 받는다.
+		// 잘못된 값이 오면 500 에러 대신 사용자 안내 메시지로 처리한다.
+		Role roleValue;
+		try {
+			roleValue = Role.valueOf(role);
+		} catch (IllegalArgumentException | NullPointerException e) {
+			throw new IllegalStateException("올바르지 않은 권한입니다.");
+		}
 		
 		Employee employee = Employee.builder()
 				.username(username)
