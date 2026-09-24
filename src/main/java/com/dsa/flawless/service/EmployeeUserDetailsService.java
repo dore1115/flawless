@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class EmployeeUserDetailsService implements UserDetailsService {
 	
 	private final EmployeeRepository employeeRepository;
-
+	
 	@Override
 	public UserDetails loadUserByUsername(String username)
 			throws UsernameNotFoundException {
@@ -31,12 +31,10 @@ public class EmployeeUserDetailsService implements UserDetailsService {
 					log.info("조회한 username = {}", username);
 					return new UsernameNotFoundException("사용자를 찾을 수 없습니다.");
 				});
-		// TODO(REQ-NF-L-001 관련 부가 결함): 비밀번호 원문을 그대로 로그에 남기고 있다.
-		// 로그 파일/로그 수집기에 평문 비밀번호가 그대로 적재되므로 즉시 제거 대상.
+		// REQ-NF-L-001 부가 결함 처리: 비밀번호 값을 로그에 남기던 코드를 제거함.
 		// (요청 실패 로그에도 입력 비밀번호 원문을 남기지 않는다 — REQ-F-W-005 비고와 동일한 원칙)
 		log.info("===== 사용자 찾음 =====");
 		log.info("username = {}", employee.getUsername());
-		log.info("password = {}", employee.getPassword());
 		log.info("role = {}", employee.getRole());
 		
 		return new EmployeeUserDetails(employee);
