@@ -41,3 +41,8 @@ management:
       application: erp-backend
 app:
   timezone: Asia/Seoul
+  # REQ-NF-S-001: 로그인/세션 정책값 (코드 수정 없이 여기서 변경)
+  security:
+    max-sessions: 1       # 한 계정당 동시 로그인 허용 수
+    bcrypt-strength: 10   # 비밀번호 암호화 강도
+
