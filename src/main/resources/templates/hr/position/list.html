@@ -14,8 +14,8 @@
     실제로 비활성화를 수행하지만, 삭제 실행 권한(Role) 검증과 감사 로그 기록은 의도적으로 넣지
     않았다 — 로그인 여부·직급과 무관하게 누구나 삭제를 실행할 수 있고, 누가/언제 삭제했는지도
     기록에 남지 않는다. 자세한 내용은 PositionService 클래스 주석 참고.
-  Model 속성: positions(List<Position>), positionForm(PositionCreateForm), message(String, flash),
-              deleteBlockedName(String, flash), blockingEmployees(List<Employee>, flash)
+  Model 속성: positions(List<PositionRowDto>), positionForm(PositionCreateForm), message(String, flash),
+              deleteBlockedName(String, flash), blockingEmployees(List<BlockingEmployeeView>, flash)
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">

@@ -1,7 +1,7 @@
 package com.dsa.flawless.controller;
 
 import com.dsa.flawless.config.EmployeeUserDetails;
-import com.dsa.flawless.domain.Attendance;
+import com.dsa.flawless.dto.AttendanceDto;
 import com.dsa.flawless.service.AttendanceService;
 import com.dsa.flawless.service.CalendarService;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +36,8 @@ public class AttendanceController {
 
         if (principal instanceof EmployeeUserDetails userDetails) {
             String username = userDetails.getUsername();
-            List<Attendance> attendanceList = attendanceService.getList(username, year, month);
-            Map<Integer, Attendance> attendanceMap = attendanceList.stream()
+            List<AttendanceDto> attendanceList = attendanceService.getList(username, year, month);
+            Map<Integer, AttendanceDto> attendanceMap = attendanceList.stream()
                     .collect(Collectors.toMap(a -> a.getWorkDate().getDayOfMonth(), a -> a));
 
             model.addAttribute("attendanceMap", attendanceMap);
