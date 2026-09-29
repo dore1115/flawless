@@ -7,6 +7,7 @@ import com.dsa.flawless.domain.Role;
 import com.dsa.flawless.repository.EmployeeRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 // 회원등록 서비스
@@ -17,6 +18,9 @@ public class EmployeeRegisterService {
 	private final EmployeeRepository employeeRepository;
 	
 	private final EntityManager em;
+	
+	// REQ-NF-L-001 개선: 비밀번호를 BCrypt 해시로 저장하기 위해 사용
+	private final PasswordEncoder passwordEncoder;
 	
 	public Employee registerEmployee(String username, String password, String name, String email,
 	                                 String phone, String address,
@@ -43,8 +47,8 @@ public class EmployeeRegisterService {
 		
 		Employee employee = Employee.builder()
 				.username(username)
-				// TODO(REQ-NF-L-001 개선 라운드 전): 지금은 평문 저장, 나중에 encoder.encode(...)로 교체
-				.password(password)
+				// REQ-NF-L-001 개선: 평문 저장 → BCrypt 해시 저장
+				.password(passwordEncoder.encode(password))
 				.name(name)
 				.email(email)
 				.phone(phone)
@@ -56,5 +60,5 @@ public class EmployeeRegisterService {
 		
 		return employeeRepository.save(employee);
 	}
-
+	
 }
