@@ -8,11 +8,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 public class EmployeeUserDetails implements UserDetails {
-	private  final Employee employee;
+	private final Employee employee;
 	
-	public EmployeeUserDetails(Employee employee) {this.employee = employee; }
+	public EmployeeUserDetails(Employee employee) { this.employee = employee; }
+	
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		return List.of(new SimpleGrantedAuthority("ROLE_" + employee.getRole().name()));
@@ -26,5 +28,17 @@ public class EmployeeUserDetails implements UserDetails {
 	@Override
 	public String getUsername() {
 		return employee.getUsername();
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof EmployeeUserDetails other)) return false;
+		return Objects.equals(this.getUsername(), other.getUsername());
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hash(getUsername());
 	}
 }

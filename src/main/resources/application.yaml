@@ -17,6 +17,8 @@ server:
   servlet:
     session:
       tracking-modes: cookie
+      timeout: 30m
+      # 사용자가 30분 동안 아무 활동도 안 하면 자동으로 로그아웃 (세션 만료)
       # TODO(REQ-NF-L-003 세션 만료/동시 로그인 정책 미정): 세션 타임아웃 값이 없어서
       # 기본값(서버/컨테이너 설정에 의존)으로 동작 중. 정책 확정 후 timeout: 30m 같은 값 추가.
       # timeout: 30m
