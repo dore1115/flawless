@@ -11,13 +11,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.accessibility.AccessibleText;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -63,21 +63,18 @@ public class AttendanceService {
         attendance.clockOut(now);
     }
     // 조회 처리
-    //! 전체 조회 후 원하는 조건에 맞는 데이터를 조회하기 때문에 성능 저하를 유발할 가능성이 있다.
     public List<AttendanceDto> getList(String employeeUsername, Integer year, Integer month) {
-        List<Attendance> attendances = attendanceRepository.findAllByEmployeeUsername(employeeUsername);
-        List<AttendanceDto> monthlyAttendance = new ArrayList<>();
-
         LocalDate now = LocalDate.now(clock);
         int targetYear = year == null ? now.getYear() : year;
         int targetMonth = month == null ? now.getMonthValue() : month;
-        for (Attendance attendance : attendances) {
-            if (attendance.getWorkDate().getYear() == targetYear && attendance.getWorkDate().getMonthValue() == targetMonth ) {
-                monthlyAttendance.add(new AttendanceDto(attendance.getWorkDate(), attendance.getClockIn(), attendance.getClockOut()));
-            }
-        }
 
-        return monthlyAttendance;
+        YearMonth yearMonth = YearMonth.of(targetYear, targetMonth);
+        List<Attendance> attendances = attendanceRepository.findAllByEmployeeUsernameAndWorkDateBetween(
+                employeeUsername, yearMonth.atDay(1), yearMonth.atEndOfMonth());
+
+        return attendances.stream()
+                .map(attendance -> new AttendanceDto(attendance.getWorkDate(), attendance.getClockIn(), attendance.getClockOut()))
+                .collect(Collectors.toList());
     }
 
 
