@@ -3,10 +3,15 @@ package com.dsa.flawless.service;
 import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Position;
+import com.dsa.flawless.dto.DepartmentRowDto;
+import com.dsa.flawless.dto.EmployeeAssignmentForm;
+import com.dsa.flawless.dto.EmployeeRowDto;
+import com.dsa.flawless.dto.PositionRowDto;
 import com.dsa.flawless.repository.DepartmentRepository;
 import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.repository.PositionRepository;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -40,25 +45,35 @@ public class EmployeeAssignmentService {
     private final DepartmentRepository departmentRepository;
 
     @Transactional(readOnly = true)
-    public List<Employee> findAll() {
-        return employeeRepository.findAll();
+    public List<EmployeeRowDto> findAll() {
+        return employeeRepository.findAll().stream()
+                .map(EmployeeRowDto::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Employee getEmployeeOrThrow(Long employeeId) {
+    public EmployeeAssignmentForm getAssignmentFormOrThrow(Long employeeId) {
+        return EmployeeAssignmentForm.from(getEmployeeOrThrow(employeeId));
+    }
+
+    private Employee getEmployeeOrThrow(Long employeeId) {
         // REQ-F-M-004 비고: 대상 사원이 없으면 '대상 없음'(404) 오류
         return employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 사원이 없습니다."));
     }
 
     @Transactional(readOnly = true)
-    public List<Position> getActivePositions() {
-        return positionRepository.findByActiveTrue();
+    public List<PositionRowDto> getActivePositions() {
+        return positionRepository.findByActiveTrue().stream()
+                .map(PositionRowDto::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<Department> getActiveDepartments() {
-        return departmentRepository.findByActiveTrue();
+    public List<DepartmentRowDto> getActiveDepartments() {
+        return departmentRepository.findByActiveTrue().stream()
+                .map(DepartmentRowDto::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional

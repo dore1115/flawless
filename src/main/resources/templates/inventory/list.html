@@ -4,11 +4,9 @@
   대응 Controller: InventoryController.list() [GET /inventory/items]
   관련 요구사항: REQ-F-S-011(재고 조회), REQ-F-C-008(재고 검색)
 
-  Model 속성: items(List<Item>), quantities(Map<Long,Integer>, 품목 id별 현재 재고 수량),
+  Model 속성: items(List<StockRowDto>), quantities(Map<Long,Integer>, 품목 id별 현재 재고 수량),
               keyword(String, 검색어 - 검색창 재표시용), currentPage(int), totalPages(int)
 
-  //! [REQ-NF-I-001] Item 엔티티를 변환 없이 그대로 받아 화면에서 사용함(다른 화면들처럼 Row Dto로
-  //! 변환하지 않음 - 의도적으로 남겨둔 결함). InventoryService.getCurrentQuantities() 주석 참고.
   ※ REQ-NF-G-003/REQ-NF-I-002로 로그인만 되어 있으면 누구나 접근 가능(별도 권한 검증 없음).
 
   품목명을 누르면 재고 입출고 이력 조회(IV-005, REQ-F-S-012) 화면(GET /inventory/{id}/history,

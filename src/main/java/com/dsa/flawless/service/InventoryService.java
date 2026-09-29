@@ -6,6 +6,7 @@ import com.dsa.flawless.dto.OutboundHistoryDto;
 import com.dsa.flawless.dto.OutboundItemOptionDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.dto.StockHistoryRowDto;
+import com.dsa.flawless.dto.StockRowDto;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Item;
 import com.dsa.flawless.domain.MoveType;
@@ -220,35 +221,29 @@ public class InventoryService {
     //! NameContaining(...)에 Pageable을 추가해 DB가 LIMIT/OFFSET을 처리하도록 바꿈.
 
     @Transactional(readOnly = true)
-    public List<Item> getFilteredActiveItems(String name) {
+    public List<StockRowDto> getFilteredActiveItems(String name) {
         // [버그 수정] 품목 관리(IV-001, createdAt 오름차순)와 정렬 순서가 달라 페이지별로 보이는
         // 품목이 서로 어긋나던 문제 - 정렬을 보장하는 findAllByDeletedFalseOrderByCreatedAtAsc()/
         // findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc()로 교체함(ItemRepository 참고).
-        if (name == null || name.isBlank()) {
-            return itemRepository.findAllByDeletedFalseOrderByCreatedAtAsc();
-        }
-        return itemRepository.findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(name.trim());
+        List<Item> items = (name == null || name.isBlank())
+                ? itemRepository.findAllByDeletedFalseOrderByCreatedAtAsc()
+                : itemRepository.findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(name.trim());
+        return items.stream().map(StockRowDto::new).collect(Collectors.toList());
     }
 
     /**
      * 위 getFilteredActiveItems()가 돌려준 품목들의 "현재 재고 수량"을 품목 id 기준으로 모아 담음.
      *
      */
-    //! [REQ-NF-I-001] 재고 조회 화면은 Item 엔티티를 변환 없이 그대로 Model에 담아 화면에 넘김
-    //! (다른 화면들은 ItemRowDto/OutboundItemOptionDto 등으로 변환해서 넘기는 것과 다름 - 의도적으로
-    //! 남겨둔 결함). 화면 표시에 필요 없는 등록/수정일시, deleted 플래그 등 내부 필드까지 템플릿에서
-    //! 그대로 접근 가능한 상태임. 해결 방법: 품목명/현재 수량만 담는 별도 응답 DTO(예: StockRowDto)를
-    //! 만들어 InventoryController.list()가 Item 대신 그 DTO 목록을 Model에 담도록 바꿈.
-    //!
     //! [REQ-NF-I-003] 아래 for문이 품목 하나하나마다 stockRepository.findByItemId()를 개별
     //! 호출하는 N+1 쿼리임 - ItemService.getDashboardSummary(), InventoryService.
     //! getActiveItemOptionsWithStock()와 동일한 패턴의 결함을 재고 조회 화면에도 그대로 남겨둠.
     //! 해결 방법: 품목 id 목록을 한 번에 IN 절로 조회하는 배치 쿼리로 교체.
 
     @Transactional(readOnly = true)
-    public Map<Long, Integer> getCurrentQuantities(List<Item> items) {
+    public Map<Long, Integer> getCurrentQuantities(List<StockRowDto> items) {
         Map<Long, Integer> quantities = new LinkedHashMap<>();
-        for (Item item : items) {
+        for (StockRowDto item : items) {
             int currentQuantity = stockRepository.findByItemId(item.getId())
                     .map(Stock::getQuantity)
                     .orElse(0);
@@ -270,9 +265,22 @@ public class InventoryService {
      * findByIdAndDeletedFalse가 아닌 findById를 씀.
      */
     @Transactional(readOnly = true)
-    public Item getItemOrThrow(Long itemId) {
-        return itemRepository.findById(itemId)
+    public StockRowDto getStockRowOrThrow(Long itemId) {
+        Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new ItemNotFoundException("대상 품목이 없습니다. itemId=" + itemId));
+        return new StockRowDto(item);
+    }
+
+    /**
+     * 재고 출고 처리(outbound())에서 "처리한 사원"의 id를 로그인 username으로 조회하기 위해 사용.
+     * 컨트롤러가 EmployeeRepository를 직접 호출하지 않도록 서비스 계층에 둔다.
+     */
+    @Transactional(readOnly = true)
+    public Long getEmployeeIdByUsername(String username) {
+        return employeeRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalStateException(
+                        "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + username))
+                .getId();
     }
 
     /**

@@ -25,8 +25,10 @@ public class Attendance extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
-    //! N+1 의도적으로 배치
-    @ManyToOne(fetch = FetchType.EAGER)
+    // N+1 해결: employee는 화면/배치 어느 쪽에서도 참조하지 않으므로 LAZY로 바꿔 매 Attendance 로딩마다
+    // 딸려 나가던 추가 SELECT(N+1)를 없앤다 - AttendanceBatchScheduler.clockOutBatchProcess()처럼
+    // 여러 사원의 Attendance를 한 번에 조회하는 경로에서 특히 영향이 컸다.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
     @Column(name = "work_date", nullable = false)
