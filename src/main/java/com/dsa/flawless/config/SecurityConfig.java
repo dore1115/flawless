@@ -1,5 +1,6 @@
 package com.dsa.flawless.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,7 +21,10 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 public class SecurityConfig {
 	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http,
+			// REQ-NF-S-001: 동시 로그인 허용 수를 application.yaml에서 읽음 (값이 없으면 1)
+			@Value("${app.security.max-sessions:1}") int maxSessions) throws Exception {
 		
 		http
 				// 페이지 접근 권한 설정
@@ -38,7 +42,7 @@ public class SecurityConfig {
 						.logoutSuccessUrl("/login")
 				)
 				.sessionManagement(session -> session
-						.maximumSessions(1)
+						.maximumSessions(maxSessions)
 						.maxSessionsPreventsLogin(false)
 						.expiredUrl("/login?expired")
 				);
@@ -46,8 +50,10 @@ public class SecurityConfig {
 	}
 	
 	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
+	public PasswordEncoder passwordEncoder(
+			// REQ-NF-S-001: 비밀번호 암호화 강도를 application.yaml에서 읽음 (값이 없으면 10)
+			@Value("${app.security.bcrypt-strength:10}") int bcryptStrength) {
+		return new BCryptPasswordEncoder(bcryptStrength);
 	}
 	
 	@Bean
