@@ -1,6 +1,6 @@
 -- ─────────────────────────────────────────────────────────────
 -- 부하테스트용 데이터 증량 (seed_data.sql 적용 후 1회 실행)
---   docker exec -i erp-mysql mysql -uroot -p$DB_ROOT_PASSWORD erp < container/k6/nfr/data/scale-up.sql
+--   docker exec -i erp-mysql mysql -uroot -p$DB_ROOT_PASSWORD erp < container/k6/nfr/data/z-scale-up.sql
 --
 -- 개선 전/후 비교는 "같은 데이터"에서 해야 하므로, 이 스크립트를 적용한 DB 볼륨 상태를 고정해두고
 -- seed 브랜치 / fix 브랜치 앱 이미지만 바꿔서 측정할 것.

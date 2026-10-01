@@ -6,7 +6,7 @@
 // 개선: 기간 조건 쿼리 + fetch join
 //
 // 관측 포인트: 사원 1명당 근태 행 수가 늘수록(개선 전) 응답시간이 선형 증가해야 정상적으로 재현된 것.
-//   시드는 1인당 약 1년(≈260행)이라 차이가 작다 → data/scale-up.sql 로 5년치로 늘린 뒤 측정 권장.
+//   시드는 1인당 약 1년(≈260행)이라 차이가 작다 → data/z-scale-up.sql 로 5년치로 늘린 뒤 측정 권장.
 import http from "k6/http";
 import { check, sleep } from "k6";
 import exec from "k6/execution";

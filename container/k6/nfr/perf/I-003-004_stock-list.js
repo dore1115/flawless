@@ -4,7 +4,7 @@
 // 결함: InventoryService.getFilteredActiveItems()가 전체 품목을 한 번에 읽고 subList로 자름(I-004)
 //       + getCurrentQuantities()가 품목마다 stockRepository.findByItemId() 개별 호출(I-003)
 //
-// 시드 품목은 50건뿐이라 I-004가 거의 안 보인다 → data/scale-up.sql 로 5,000건 이상 만든 뒤 측정.
+// 시드 품목은 50건뿐이라 I-004가 거의 안 보인다 → data/z-scale-up.sql 로 5,000건 이상 만든 뒤 측정.
 // MAX_PAGE는 (품목 수 / 10) - 1 로 맞출 것 (시드 50건 = 4, 5,050건 = 504)
 import http from "k6/http";
 import { check, sleep } from "k6";

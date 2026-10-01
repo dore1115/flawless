@@ -1,0 +1,26 @@
+# compose.measure.yaml 이 마운트하는 측정용 Prometheus 설정.
+# seed는 http, fix(G-001 이후)는 https라서 두 job을 다 두고, 해당 브랜치에서 맞는 쪽만 up=1이 된다.
+# Grafana 쿼리는 job으로 거르지 않으면 그대로 동작한다.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "app-http"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["app:9091"]
+        labels: { service: "erp-backend" }
+
+  - job_name: "app-https"
+    metrics_path: "/actuator/prometheus"
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ["app:9091"]
+        labels: { service: "erp-backend" }
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]

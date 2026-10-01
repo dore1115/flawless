@@ -10,9 +10,47 @@ nfr/
 ├─ perf/                성능 (부하/breakpoint)
 ├─ concurrency/         동시성 (Lost Update)
 ├─ security/            보안 기능 검증 (✓ 개선됨 / ✗ 결함 존재)
-├─ data/scale-up.sql    측정용 데이터 증량
+├─ data/z-scale-up.sql    측정용 데이터 증량
 └─ results/             실행 결과 JSON (REQ_LABEL_PROFILE_시각.json)
 ```
+
+## G·H 측정 체크리스트 (발표용 최종 측정)
+
+### 공통 — 매 측정 전
+- [ ] **측정 오버라이드를 얹어서 기동**: `docker compose -f container/docker-compose.yaml -f container/k6/nfr/compose.measure.yaml up -d --build`
+      (힙 75%, actuator 9091 분리, SQL 로그 off, AUDIT 로그 on — 브랜치가 달라도 측정 조건이 같아짐)
+- [ ] **브랜치를 바꿀 때마다 DB 볼륨 초기화**: `docker compose ... down -v` → `up` → `z-scale-up.sql` 재적용
+  (fix 쪽 schema.sql에 version 컬럼·H-008 인덱스가 들어 있어서, 볼륨을 재사용하면 seed에도 인덱스가 남고 / fix는 version 컬럼이 없어 실패함)
+- [ ] **Grafana `up{service="erp-backend"}` = 1 확인** (app-http / app-https 중 하나). 0이면 지표가 안 들어오는 것
+      → G-003 이후 브랜치는 `anyRequest().authenticated()`라 `/actuator/**`도 로그인 페이지로 튕길 수 있음.
+        그 경우 SecurityConfig에 `.requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()` 추가
+        (9091은 호스트에 노출하지 않으니 외부 공개 아님)
+- [ ] **breakpoint 1회마다 앱 재시작** (직전 테스트의 힙·세션이 다음 결과에 섞이지 않게)
+- [ ] **BASE_URL**: seed는 `http://localhost:8080`, G-001 이후는 `https://localhost:8080`
+      `[login] ... 실패` 경고가 나오면 결과 무효 → 원인부터 해결
+
+### 성능 비교는 "H 브랜치 끝"에서
+G-005(감사 로그 AOP)는 모든 서비스 호출에 로그를 남겨서 요청당 비용이 늘어난다.
+H-007/H-008 개선 효과를 깔끔하게 보이려면 **seed(dev) vs `fix-REQ-NF-H` 커밋(G-004~006 병합 전)** 으로 비교하고,
+G-006 최종본 수치는 "보안 기능을 다 넣은 뒤의 비용"으로 따로 한 줄 적는 게 정직하다.
+
+### 항목별 주의
+
+| ID | 확인 방법 | 주의 |
+|---|---|---|
+| G-001 | `security-checks.js` + `BASE_URL=https://... HTTP_URL=http://localhost:8080` / Wireshark | 지금 로컬 `application-docker.yaml`은 `ssl:`이 주석 처리돼 있음 → docker 프로필에서 TLS가 실제로 켜지는지 먼저 확인. 같은 포트로 평문을 보내면 Tomcat이 400(`requires TLS`)으로 거절하는 게 정상 |
+| G-002 | ArchUnit 테스트 실패 로그 캡처 | 일부러 Entity를 반환하는 컨트롤러를 하나 만들어 빌드가 깨지는 걸 보여주면 확실 |
+| G-003 | `security-checks.js` (비로그인 접근 → `/login`) | 위 actuator 인증 문제와 같은 원인이니 같이 확인 |
+| G-004 | `security-checks.js` (스택트레이스 없음) + 오류 화면 캡처 | 핵심은 "스택트레이스 없음". "5xx 아님" 항목은 예외 종류에 따라 500이 정상일 수 있음 |
+| G-005 | `docker logs erp-app \| grep AUDIT` | docker 프로필 root 로그 레벨이 warn이면 AUDIT(info)가 안 찍힘 → 오버라이드의 `LOGGING_LEVEL_AUDIT=info` 필요 |
+| G-006 | 같은 AUDIT 로그에서 이메일·전화·주소가 `ho***@`, `010-****-` 형태인지 | 사원 정보 변경(H-007 smoke 1회)을 돌리면 마스킹 대상 파라미터가 로그에 찍힘 |
+| G-007 | 측정 방법론 슬라이드 | 오버라이드 파일 = "측정 조건 고정"의 근거 자료 |
+| H-001 | 응답 캡처 + `security-checks.js` | |
+| H-002 | `security-checks.js` + `ALLOW_WRITES=true` | seed에서는 실제로 빈 이름/중복 직책이 생성됨 → 볼륨 초기화로 정리 |
+| H-004/H-005 | `security-checks.js` (일반 사원 → 403) | |
+| H-007 | `perf/H-007_employee-update.js` breakpoint | 관리자 세션 20개를 나눠 씀(`SHARED_SESSIONS`). L-003 동시 로그인 제한이 들어간 브랜치라면 그 이하로 |
+| H-008 | `EXPLAIN` 캡처 + `perf/H-008_code-lookup.js` | **seed도 FK 때문에 이미 인덱스가 있음** → seed DB에서 FK·자동 인덱스를 지우지 않으면 차이가 0. 소속 1~5명짜리 직책을 만들어 그것만 대상으로 측정해야 인덱스 효과가 보임 |
+| H-009 | `concurrency/H-009_lost-update.js` | 현재 fix는 `@Version` + 409(동시 트랜잭션 방지)까지. 폼에 version이 없어서 "오래된 화면 기준 저장"은 여전히 여러 건 성공함 → **판정은 409 발생 여부**(`nfr_update_conflict_409 > 0`)로, 남은 한계는 발표에서 언급 |
 
 ## 요구사항 ↔ 스크립트
 
@@ -38,7 +76,7 @@ nfr/
 
 ## 사전 준비
 
-1. **데이터 증량** (1회): `data/scale-up.sql` — 품목 +5,000, 근태 5년치. 개선 전/후는 이 상태의 같은 DB에서 측정.
+1. **데이터 증량** (1회): `../../mysql-init/z-scale-up.sql` — 품목 +5,000, 근태 5년치. 개선 전/후는 이 상태의 같은 DB에서 측정.
 2. **Grafana의 서버 측 p99**: `http_server_requests_seconds`로 p99를 그리려면 `application.yaml`에
    `management.metrics.distribution.percentiles-histogram.http.server.requests: true`가 있어야
    `histogram_quantile()`에 쓸 버킷이 생긴다. (없으면 Grafana p99는 k6 쪽 값만 믿을 것)
@@ -94,6 +132,7 @@ docker run --rm -i --network container_erp-net -v "$PWD":/nfr -w /nfr \
 | I-003-004 | `MAX_PAGE`, `SEARCH_RATIO`, `KEYWORDS` | `4`, `0.3`, `모니터,케이블,용지,부하테스트` | 페이지 범위(품목 수/10 − 1), 검색 비율, 검색어 |
 | H-007 | `MODE` | `update` | `update`(info 조회 + 변경 POST) / `list`(사원 목록) / `both` |
 | H-007 | `ID_FROM`, `ID_TO` | `7`, `100` | 대상 사원 ID 범위 |
+| H-007, H-008 | `SHARED_SESSIONS` | `20` | setup에서 만들 관리자 세션 수. 세션 1개를 전 VU가 공유하면 세션 mutex에서 줄을 서는 인위적 병목이 생김 (L-003 동시 로그인 제한 적용 시 그 이하로) |
 | L-005 | `LOGOUT` | `true` | 매 반복 로그아웃 여부 (false면 세션 누적) |
 | I-005 | `ITEM_ID`, `RACE_VUS`, `ITER`, `RESTORE` | `23`, `50`, `2`, `true` | 대상 품목, 동시 VU 수, VU당 요청 수, 종료 후 재고 복원 |
 | H-009 | `TARGET_ID`, `RACE_VUS` | `50`, `10` | 대상 사원, 동시 저장 수 |
@@ -126,7 +165,7 @@ EXPLAIN SELECT * FROM employee WHERE position_id = 1;   -- type=ref, key=fk_empl
 ```
 
 결함을 재현하려면 seed 쪽에서 FK를 빼야 한다 (`ALTER TABLE employee DROP FOREIGN KEY fk_employee_position, DROP INDEX fk_employee_position;` 부서도 동일).
-그리고 사원 100명으론 풀스캔도 빨라서 차이가 안 보이니 `scale-up.sql`의 [3] 사원 50,000명 블록도 켤 것.
+그리고 사원 100명으론 풀스캔도 빨라서 차이가 안 보이니 `z-scale-up.sql`의 [3] 사원 50,000명 블록도 켤 것.
 
 단, 50,000명을 직책 6개에 고르게 나누면 직책 하나당 약 8,000명이라, 요청 비용의 대부분이
 "인덱스냐 풀스캔이냐"가 아니라 **8,000개 엔티티를 올리는 비용**이 된다 (인덱스를 써도 8,000행은 읽어야 함).

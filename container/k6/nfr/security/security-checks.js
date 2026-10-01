@@ -54,7 +54,13 @@ export default function () {
       } catch (e) {
         r = { status: 0, headers: {} };
       }
-      check(r, { "평문 포트는 https로 리다이렉트되거나 닫혀 있음": (x) => x.status === 0 || (x.status >= 300 && x.status < 400 && /^https:/.test(location(x))) });
+      // Tomcat은 TLS 포트로 평문 요청이 오면 400 "This combination of host and port requires TLS."로 거절한다
+      check(r, {
+        "평문 요청이 거절되거나 https로 리다이렉트됨": (x) =>
+          x.status === 0 ||
+          (x.status >= 300 && x.status < 400 && /^https:/.test(location(x))) ||
+          (x.status === 400 && /requires TLS/i.test(x.body || "")),
+      });
     }
   });
 
