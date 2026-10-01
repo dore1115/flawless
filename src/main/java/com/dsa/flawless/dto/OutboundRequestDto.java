@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 재고 출고 폼(inventory/outbound.html)에서 넘어오는 입력값을 받는 DTO.
@@ -18,6 +19,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@ToString // AuditLogAspect가 감사 로그에 요청 내용(itemId, quantity)을 남길 때 사용
 @NoArgsConstructor
 public class OutboundRequestDto {
 
