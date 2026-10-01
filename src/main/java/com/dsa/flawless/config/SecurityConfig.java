@@ -28,7 +28,7 @@ public class SecurityConfig {
 		http
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/login", "/js/**").permitAll() // 로그인 화면·정적 리소스만 예외
+						.requestMatchers("/login", "/js/**", "/error").permitAll() // 로그인 화면·정적 리소스·공통 오류 화면(REQ-NF-G-004)만 예외
 						.anyRequest().authenticated() //! REQ-NF-G-003 해결: 로그인 필수로 전환
 				)
 				.formLogin(form -> form

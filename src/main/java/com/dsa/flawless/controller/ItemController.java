@@ -2,9 +2,7 @@ package com.dsa.flawless.controller;
 
 import com.dsa.flawless.dto.ItemCreateForm;
 import com.dsa.flawless.dto.ItemUpdateForm;
-import com.dsa.flawless.exception.DuplicateItemNameException;
 import com.dsa.flawless.exception.ItemInUseException;
-import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -80,7 +78,7 @@ public class ItemController {
      *
      * 분기 처리:
      *   - 품목명 공백(@NotBlank 검증 실패)  → 목록 화면 유지 + 등록 모달을 연 채로 필드 오류 표시
-     *   - 이미 등록된 품목명(중복)          → 목록 화면 유지 + 등록 모달을 연 채로 필드 오류 표시
+     *   - 이미 등록된 품목명(중복)          → DuplicateItemNameException → GlobalExceptionHandler(409 오류 화면)
      *   - 성공                           → redirect + 플래시 메시지 "품목이 등록되었습니다."
      */
     @PostMapping
@@ -90,13 +88,9 @@ public class ItemController {
                           Model model) {
 
         if (!bindingResult.hasErrors()) {
-            try {
-                itemService.create(form.getName());
-                redirectAttributes.addFlashAttribute("message", "품목이 등록되었습니다.");
-                return "redirect:/inventory";
-            } catch (DuplicateItemNameException e) {
-                bindingResult.rejectValue("name", "duplicate", e.getMessage());
-            }
+            itemService.create(form.getName());
+            redirectAttributes.addFlashAttribute("message", "품목이 등록되었습니다.");
+            return "redirect:/inventory";
         }
 
         // 실패 시: 목록을 다시 채워서 같은 화면으로 돌아가되, 등록 모달이 열린 채로 보이도록 함.
@@ -112,8 +106,8 @@ public class ItemController {
      * REQ-F-S-010 품목 정보 수정("품목 정보 수정" 모달의 "저장" 버튼).
      *
      * 분기 처리:
-     *   - 품목명 공백 / 이미 등록된 다른 품목명(중복) → 목록 유지 + 해당 행의 수정 모달을 연 채로 오류 표시
-     *   - 대상 품목 없음                              → redirect + 플래시 오류 메시지
+     *   - 품목명 공백                                 → 목록 유지 + 해당 행의 수정 모달을 연 채로 오류 표시
+     *   - 이미 등록된 다른 품목명(중복) / 대상 품목 없음 → GlobalExceptionHandler(409/404 오류 화면)
      *   - 성공                                        → redirect + 플래시 메시지 "품목 정보가 수정되었습니다."
      */
     @PostMapping("/{id}")
@@ -125,16 +119,9 @@ public class ItemController {
                           Model model) {
 
         if (!bindingResult.hasErrors()) {
-            try {
-                itemService.update(id, form.getName());
-                redirectAttributes.addFlashAttribute("message", "품목 정보가 수정되었습니다.");
-                return "redirect:/inventory?page=" + page;
-            } catch (DuplicateItemNameException e) {
-                bindingResult.rejectValue("name", "duplicate", e.getMessage());
-            } catch (ItemNotFoundException e) {
-                redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-                return "redirect:/inventory?page=" + page;
-            }
+            itemService.update(id, form.getName());
+            redirectAttributes.addFlashAttribute("message", "품목 정보가 수정되었습니다.");
+            return "redirect:/inventory?page=" + page;
         }
 
         // 실패 시: 방금 수정하려던 품목이 있던 그 페이지로 목록을 다시 채워서 같은 화면으로
@@ -152,13 +139,14 @@ public class ItemController {
      * REQ-F-C-008 품목 삭제(목록 행의 "삭제" 버튼).
      * DepartmentController.delete()/PositionController.delete()와 동일한 구조: 성공/실패 모두
      * 목록 화면으로 리다이렉트하고, 실패 사유는 플래시 메시지로 전달.
+     * 대상 품목이 없으면(ItemNotFoundException) GlobalExceptionHandler가 404 오류 화면으로 처리.
      */
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
             itemService.delete(id);
             redirectAttributes.addFlashAttribute("message", "품목이 삭제(비활성화)되었습니다.");
-        } catch (ItemInUseException | ItemNotFoundException e) {
+        } catch (ItemInUseException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/inventory";

@@ -5,7 +5,6 @@ import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.dto.StockHistoryRowDto;
 import com.dsa.flawless.exception.InsufficientStockException;
-import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.domain.Item;
 import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.InventoryService;
@@ -129,15 +128,8 @@ public class InventoryController {
         //!     안 해서 임시로 employeeId=1L을 그대로 씀.
         Long employeeId = 1L;
 
-        try {
-            inventoryService.inbound(requestDto, employeeId);
-        } catch (ItemNotFoundException e) {
-            // 2) 품목이 없거나 비활성화된 경우 → itemId 필드에 오류를 등록하고 폼 화면을 유지.
-            bindingResult.rejectValue("itemId", "invalid", "품목을 선택해 주세요.");
-            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
-            model.addAttribute("recentInbound", inventoryService.getRecentInboundHistories());
-            return "inventory/inbound";
-        }
+        // 2) 품목이 없거나 비활성화된 경우 → ItemNotFoundException → GlobalExceptionHandler(404 오류 화면)
+        inventoryService.inbound(requestDto, employeeId);
 
         // 3) 성공 시: 입고 화면 자기 자신으로 되돌아가 배너로 완료 메시지를 보여줌.
         //    [되돌림] 한 번은 재고 조회(IV-002) 화면으로 리다이렉트하도록 바꿨었는데, 입고 처리
@@ -221,14 +213,9 @@ public class InventoryController {
         //! 확인하지 않아서 아무 사원이나 출고 처리가 가능한 상태임(증상/해결 방법은 위 inbound() 메서드의
         //! employeeId 선언부 주석에 자세히 적어둠 - 같은 결함, 같은 해결 방법이 그대로 적용됨).
 
+        // 2) 품목이 없거나 비활성화된 경우 → ItemNotFoundException → GlobalExceptionHandler(404 오류 화면)
         try {
             inventoryService.outbound(requestDto, employeeId);
-        } catch (ItemNotFoundException e) {
-            // 2) 품목이 없거나 비활성화된 경우 → itemId 필드에 오류를 등록하고 폼 화면을 유지.
-            bindingResult.rejectValue("itemId", "invalid", "품목을 선택해 주세요.");
-            model.addAttribute("itemOptions", inventoryService.getActiveItemOptionsWithStock());
-            model.addAttribute("recentOutbound", inventoryService.getRecentOutboundHistories());
-            return "inventory/outbound";
         } catch (InsufficientStockException e) {
             // 3) 재고 부족 → quantity 필드에 오류를 등록하고 폼 화면을 유지.
             //    e.getMessage()에 "현재 재고: N개"까지 담겨 있어 그대로 화면에 보여줌.

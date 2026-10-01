@@ -5,9 +5,8 @@ package com.dsa.flawless.exception;
  * REQ-F-M-006: "요청 수량이 더 많으면 출고를 처리하지 않고 요청을 거부하며,
  *              충분하면 입력한 수량만큼 차감하여 저장한다."
  *
- * ItemNotFoundException과 마찬가지로 이 프로젝트에는 아직 GlobalExceptionHandler가
- * 없어서(REQ-NF-G-004, 의도적으로 비워둔 결함) InventoryController가 이 예외를
- * 직접 try-catch로 잡아 처리함.
+ * 출고 폼 화면을 유지한 채 quantity 필드 오류("현재 재고: N개")로 보여줘야 하므로
+ * GlobalExceptionHandler가 아닌 InventoryController가 직접 try-catch로 잡아 처리함.
  */
 public class InsufficientStockException extends RuntimeException {
     public InsufficientStockException(String message) {

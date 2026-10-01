@@ -42,7 +42,7 @@ public class AttendanceService {
         LocalTime CLOCK_IN_LIMIT = LocalTime.of(14,0,0);
         LocalDateTime now = LocalDateTime.now(clock);
         if (now.toLocalTime().isAfter(CLOCK_IN_LIMIT)) {
-            throw new RuntimeException("출근 가능 시각이 지났습니다."); //! REQ-NF-G-004: Exception handler 생성 필요
+            throw new BusinessException(ErrorCode.CLOCK_IN_TIME_PASSED); //! REQ-NF-G-004 개선: GlobalExceptionHandler에서 처리
         }
         Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(username, now.toLocalDate()).orElseGet(()->attendanceRepository.save(
                 Attendance.builder()
@@ -58,7 +58,7 @@ public class AttendanceService {
         LocalDateTime now = LocalDateTime.now(clock);
 
         Attendance attendance = attendanceRepository.findByEmployeeUsernameAndWorkDate(
-                username, now.toLocalDate()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)); //! REQ-NF-G-004: Exception handler 필요
+                username, now.toLocalDate()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_CLOCKED_IN)); //! REQ-NF-G-004 개선: GlobalExceptionHandler에서 처리
         attendance.clockOut(now);
     }
     // 조회 처리
