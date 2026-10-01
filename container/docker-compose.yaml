@@ -8,6 +8,7 @@ services:
       context: ../
       dockerfile: container/Dockerfile
     container_name: erp-app
+    restart: on-failure
     ports:
       - "8080:8080"
     environment:
@@ -15,6 +16,7 @@ services:
       SPRING_DATASOURCE_URL: ${DB_URL}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
       TZ: Asia/Seoul
     depends_on:
       mysql:
@@ -58,6 +60,9 @@ services:
       - app
     networks:
       - erp-net
+    command:
+      - --config.file=/etc/prometheus.yml
+      - --web.enable-remote-write-receiver
 
   grafana:
     image: grafana/grafana:11.1.0
@@ -75,7 +80,20 @@ services:
       - prometheus
     networks:
       - erp-net
-
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8000:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    privileged: true
+    networks:
+      - erp-net
 networks:
   erp-net:
     driver: bridge

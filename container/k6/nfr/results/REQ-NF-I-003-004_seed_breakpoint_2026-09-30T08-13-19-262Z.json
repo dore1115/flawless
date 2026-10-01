@@ -1,0 +1,291 @@
+{
+  "req": "REQ-NF-I-003-004",
+  "describe": "재고 조회/검색/페이징",
+  "label": "seed",
+  "profile": "breakpoint",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-09-30T08:13:19.262Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "avg": 3530.2,
+    "p50": 9,
+    "p90": 14815.3,
+    "p95": 17470,
+    "p99": 20554.1,
+    "max": 36812.4,
+    "requests": 66547,
+    "rps": 62.5,
+    "errorRatePct": 0,
+    "droppedIterations": 16752
+  },
+  "byName": {
+    "GET /inventory/items (page)": {
+      "avg": 3569.3,
+      "p50": 9.3,
+      "p90": 14865.7,
+      "p95": 17485.6,
+      "p99": 20583.5,
+      "max": 36812.4,
+      "errorRatePct": 0
+    },
+    "GET /inventory/items (search)": {
+      "avg": 3439.4,
+      "p50": 2.7,
+      "p90": 14692.7,
+      "p95": 17400.9,
+      "p99": 20459,
+      "max": 33688.4,
+      "errorRatePct": 0
+    }
+  },
+  "steps": [
+    {
+      "stage": "h01",
+      "targetRps": 10,
+      "achievedRps": 10,
+      "errorRatePct": 0,
+      "avg": 17.2,
+      "p50": 20.9,
+      "p90": 22.5,
+      "p95": 23.5,
+      "p99": 24.5,
+      "max": 25.2,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h02",
+      "targetRps": 20,
+      "achievedRps": 20,
+      "errorRatePct": 0,
+      "avg": 12.2,
+      "p50": 12.4,
+      "p90": 20.6,
+      "p95": 21.5,
+      "p99": 23.2,
+      "max": 35.8,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h03",
+      "targetRps": 30,
+      "achievedRps": 30,
+      "errorRatePct": 0,
+      "avg": 8.9,
+      "p50": 8.8,
+      "p90": 14.1,
+      "p95": 16.4,
+      "p99": 21,
+      "max": 23.6,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h04",
+      "targetRps": 40,
+      "achievedRps": 40,
+      "errorRatePct": 0,
+      "avg": 7.8,
+      "p50": 8.7,
+      "p90": 11,
+      "p95": 11.6,
+      "p99": 14.4,
+      "max": 48.9,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h05",
+      "targetRps": 50,
+      "achievedRps": 50,
+      "errorRatePct": 0,
+      "avg": 7.6,
+      "p50": 8.6,
+      "p90": 10.6,
+      "p95": 11.2,
+      "p99": 12.5,
+      "max": 21,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h06",
+      "targetRps": 60,
+      "achievedRps": 60,
+      "errorRatePct": 0,
+      "avg": 7.7,
+      "p50": 8.8,
+      "p90": 10.9,
+      "p95": 11.5,
+      "p99": 12.7,
+      "max": 18.3,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h07",
+      "targetRps": 70,
+      "achievedRps": 70,
+      "errorRatePct": 0,
+      "avg": 7.5,
+      "p50": 8.6,
+      "p90": 10.6,
+      "p95": 11.1,
+      "p99": 11.8,
+      "max": 22.4,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h08",
+      "targetRps": 80,
+      "achievedRps": 80,
+      "errorRatePct": 0,
+      "avg": 7.6,
+      "p50": 8.6,
+      "p90": 10.8,
+      "p95": 11.3,
+      "p99": 12.7,
+      "max": 26.3,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h09",
+      "targetRps": 90,
+      "achievedRps": 90,
+      "errorRatePct": 0,
+      "avg": 7.5,
+      "p50": 8.6,
+      "p90": 10.7,
+      "p95": 11.2,
+      "p99": 12,
+      "max": 20.5,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h10",
+      "targetRps": 100,
+      "achievedRps": 100,
+      "errorRatePct": 0,
+      "avg": 7.6,
+      "p50": 8.6,
+      "p90": 10.7,
+      "p95": 11.2,
+      "p99": 12.2,
+      "max": 23.9,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h11",
+      "targetRps": 110,
+      "achievedRps": 110,
+      "errorRatePct": 0,
+      "avg": 7.8,
+      "p50": 8.6,
+      "p90": 10.9,
+      "p95": 11.4,
+      "p99": 13.2,
+      "max": 32.3,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h12",
+      "targetRps": 120,
+      "achievedRps": 95.5,
+      "errorRatePct": 0,
+      "avg": 4558.1,
+      "p50": 2876,
+      "p90": 11585.5,
+      "p95": 13437.7,
+      "p99": 17438.9,
+      "max": 25859.5,
+      "broken": true,
+      "reasons": [
+        "p99 17438.9ms ≥ 3000ms",
+        "처리량 95.5/120 req/s (포화)"
+      ]
+    },
+    {
+      "stage": "h13",
+      "targetRps": 130,
+      "achievedRps": 66.3,
+      "errorRatePct": 0,
+      "avg": 15064,
+      "p50": 14847.9,
+      "p90": 18631.1,
+      "p95": 20782.3,
+      "p99": 24055,
+      "max": 32700.1,
+      "broken": true,
+      "reasons": [
+        "p99 24055ms ≥ 3000ms",
+        "처리량 66.3/130 req/s (포화)"
+      ]
+    },
+    {
+      "stage": "h14",
+      "targetRps": 140,
+      "achievedRps": 67.7,
+      "errorRatePct": 0,
+      "avg": 14688.6,
+      "p50": 14591.9,
+      "p90": 17774.5,
+      "p95": 20312.2,
+      "p99": 23173.7,
+      "max": 29094.8,
+      "broken": true,
+      "reasons": [
+        "p99 23173.7ms ≥ 3000ms",
+        "처리량 67.7/140 req/s (포화)"
+      ]
+    },
+    {
+      "stage": "h15",
+      "targetRps": 150,
+      "achievedRps": 65,
+      "errorRatePct": 0,
+      "avg": 15294.3,
+      "p50": 14942,
+      "p90": 19202.7,
+      "p95": 20968.1,
+      "p99": 24912.5,
+      "max": 36812.4,
+      "broken": true,
+      "reasons": [
+        "p99 24912.5ms ≥ 3000ms",
+        "처리량 65/150 req/s (포화)"
+      ]
+    }
+  ],
+  "breakpoint": {
+    "stage": "h12",
+    "targetRps": 120,
+    "reasons": [
+      "p99 17438.9ms ≥ 3000ms",
+      "처리량 95.5/120 req/s (포화)"
+    ],
+    "lastStableRps": 110,
+    "lastStableP99": 13.2
+  },
+  "custom": {},
+  "checks": {
+      "status 200": {
+        "passes": 66547,
+        "fails": 0
+      },
+      "재고 화면 도착(세션 유지)": {
+        "passes": 66547,
+        "fails": 0
+      }
+    }
+}

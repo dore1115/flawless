@@ -1,0 +1,59 @@
+{
+  "req": "REQ-NF-H-007",
+  "describe": "사원 정보 단일 변경 처리",
+  "label": "seed",
+  "profile": "load",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-09-30T08:29:13.356Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "avg": 4,
+    "p50": 3.6,
+    "p90": 5.6,
+    "p95": 5.9,
+    "p99": 7.2,
+    "max": 95.1,
+    "requests": 3602,
+    "rps": 20,
+    "errorRatePct": 0,
+    "droppedIterations": 0
+  },
+  "byName": {
+    "GET /hr/employees/{id}/info": {
+      "avg": 5,
+      "p50": 5,
+      "p90": 5.9,
+      "p95": 6.3,
+      "p99": 8.4,
+      "max": 20.8,
+      "errorRatePct": 0
+    },
+    "POST /hr/employees/{id}/assignment": {
+      "avg": 2.9,
+      "p50": 2.9,
+      "p90": 3.6,
+      "p95": 3.9,
+      "p99": 4.9,
+      "max": 95.1,
+      "errorRatePct": 0
+    }
+  },
+  "steps": [],
+  "breakpoint": null,
+  "custom": {},
+  "checks": {
+        "info 200": {
+          "passes": 1801,
+          "fails": 0
+        },
+        "변경 처리 302 → info": {
+          "passes": 1801,
+          "fails": 0
+        }
+      }
+}
