@@ -88,7 +88,7 @@ public class DepartmentController {
             departmentService.delete(id);
             redirectAttributes.addFlashAttribute("message", "부서가 삭제(비활성화)되었습니다.");
         } catch (DepartmentInUseException e) {
-            redirectAttributes.addFlashAttribute("deleteBlockedName", e.getDepartment().getDepartmentName());
+            redirectAttributes.addFlashAttribute("deleteBlockedName", e.getDepartmentName());
             redirectAttributes.addFlashAttribute("blockingEmployees", e.getEmployees());
         }
         return "redirect:/hr/departments";

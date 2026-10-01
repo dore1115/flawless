@@ -89,7 +89,7 @@ public class PositionController {
             positionService.delete(id);
             redirectAttributes.addFlashAttribute("message", "직책이 삭제(비활성화)되었습니다.");
         } catch (PositionInUseException e) {
-            redirectAttributes.addFlashAttribute("deleteBlockedName", e.getPosition().getPositionName());
+            redirectAttributes.addFlashAttribute("deleteBlockedName", e.getPositionName());
             redirectAttributes.addFlashAttribute("blockingEmployees", e.getEmployees());
         }
         return "redirect:/hr/positions";

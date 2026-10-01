@@ -6,7 +6,7 @@
   접근 권한: 인사관리자
   ※ REQ-NF-G-003(전역 인가 아키텍처 부재) / REQ-NF-H-004(직책·부서 단일 변경 Authority 미비, IDOR) 결함 시딩으로
     인해 현재는 로그인 여부와 무관하게 이 화면·기능에 접근할 수 있다. 결함 재현·측정 후 인사관리자 인증 미들웨어 추가 예정.
-  Model 속성: employees(List<Employee>)
+  Model 속성: employees(List<EmployeeRowDto>)
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -57,8 +57,8 @@
             </tr>
             <tr th:each="employee : ${employees}" class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                 <td class="p-3 text-slate-900" th:text="${employee.name}">홍길동</td>
-                <td class="p-3 text-slate-700" th:text="${employee.department != null ? employee.department.departmentName : '-'}">부서</td>
-                <td class="p-3 text-slate-700" th:text="${employee.position != null ? employee.position.positionName : '-'}">직책</td>
+                <td class="p-3 text-slate-700" th:text="${employee.departmentName}">부서</td>
+                <td class="p-3 text-slate-700" th:text="${employee.positionName}">직책</td>
                 <td class="p-3 text-slate-700" th:text="${employee.role}">EMPLOYEE</td>
                 <td class="p-3 text-right">
                     <a th:href="@{'/hr/employees/' + ${employee.id} + '/info'}"

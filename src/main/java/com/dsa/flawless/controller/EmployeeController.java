@@ -1,6 +1,5 @@
 package com.dsa.flawless.controller;
 
-import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.dto.EmployeeAssignmentForm;
 import com.dsa.flawless.service.EmployeeAssignmentService;
 import lombok.RequiredArgsConstructor;
@@ -47,13 +46,11 @@ public class EmployeeController {
 
     @GetMapping("/{id}/info")
     public String info(@PathVariable Long id, Model model) {
-        Employee employee = employeeAssignmentService.getEmployeeOrThrow(id);
-
-        model.addAttribute("employee", employee);
+        model.addAttribute("employeeId", id);
         model.addAttribute("positionOptions", employeeAssignmentService.getActivePositions());
         model.addAttribute("departmentOptions", employeeAssignmentService.getActiveDepartments());
         if (!model.containsAttribute("assignmentForm")) {
-            model.addAttribute("assignmentForm", EmployeeAssignmentForm.from(employee));
+            model.addAttribute("assignmentForm", employeeAssignmentService.getAssignmentFormOrThrow(id));
         }
         return "hr/employee/info";
     }
