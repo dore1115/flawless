@@ -6,10 +6,13 @@ import com.dsa.flawless.service.EmployeeService;
 import com.dsa.flawless.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.SessionAttribute;
+
+import java.util.Objects;
 
 
 /**
@@ -24,18 +27,19 @@ public class IndexController {
     private final ItemService itemService;
     private final AttendanceService attendanceService;
     private final EmployeeService employeeService;
-    //! REQ-NF-G-003: 인가 아키텍처를 사용하지 않기에(anyRequest().permitAll()), 로그인하지 않은 사용자도
-    //! 이 경로에 접근할 수 있다. @AuthenticationPrincipal은 그런 경우 null로 주입되므로 이를 확인해 처리한다.
     @GetMapping("/")
-    public String index(@AuthenticationPrincipal EmployeeUserDetails userDetails, Model model) {
-        if (userDetails == null) {
-            return "redirect:/login";
+    public String index(@SessionAttribute(name="SPRING_SECURITY_CONTEXT", required = false) SecurityContext securityContext, Model model) {
+        if (securityContext != null) {
+            Object principal = Objects.requireNonNull(securityContext.getAuthentication()).getPrincipal();
+            if (principal instanceof EmployeeUserDetails userDetails) {
+                String username = userDetails.getUsername();
+                model.addAttribute("itemSummary", itemService.getDashboardSummary());
+                model.addAttribute("attendanceSummary", attendanceService.getClockIn(username));
+                model.addAttribute("employeeSummary", employeeService.getSumOfEmployee());
+                return "index";
+            }
         }
-
-        model.addAttribute("itemSummary", itemService.getDashboardSummary());
-        model.addAttribute("attendanceSummary", attendanceService.getClockIn(userDetails.getUsername()));
-        model.addAttribute("employeeSummary", employeeService.getSumOfEmployee());
-        return "index";
+        return "redirect:/login";
     }
 
 }

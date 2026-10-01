@@ -3,13 +3,11 @@ package com.dsa.flawless.service;
 import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.DepartmentHistory;
 import com.dsa.flawless.domain.Employee;
-import com.dsa.flawless.dto.DepartmentRowDto;
 import com.dsa.flawless.exception.DepartmentInUseException;
 import com.dsa.flawless.repository.DepartmentHistoryRepository;
 import com.dsa.flawless.repository.DepartmentRepository;
 import com.dsa.flawless.repository.EmployeeRepository;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -55,10 +53,8 @@ public class DepartmentService {
      * {@code findByActiveTrue()}로 조회한다 — 신설한(사용 중인) 부서만 보이고, 삭제하면 목록에서
      * 바로 사라진다.
      */
-    public List<DepartmentRowDto> findAll() {
-        return departmentRepository.findByActiveTrue().stream()
-                .map(DepartmentRowDto::new)
-                .collect(Collectors.toList());
+    public List<Department> findAll() {
+        return departmentRepository.findByActiveTrue();
     }
 
     @Transactional

@@ -31,8 +31,8 @@ public class PositionInUseException extends RuntimeException {
                 .collect(Collectors.toList());
     }
 
-    public String getPositionName() {
-        return positionName;
+    public Position getPosition() {
+        return position;
     }
 
     public List<BlockingEmployeeView> getEmployees() {

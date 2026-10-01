@@ -29,8 +29,8 @@ public class DepartmentInUseException extends RuntimeException {
                 .collect(Collectors.toList());
     }
 
-    public String getDepartmentName() {
-        return departmentName;
+    public Department getDepartment() {
+        return department;
     }
 
     public List<BlockingEmployeeView> getEmployees() {
