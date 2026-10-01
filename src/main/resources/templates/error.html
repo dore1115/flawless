@@ -1,0 +1,54 @@
+<!--
+  templates/error.html
+  공통 오류 화면 (REQ-NF-G-004)
+  사용처: GlobalExceptionHandler, Spring Boot BasicErrorController(/error)
+  Model 속성: status(Integer), error(String), message(String), path(String)
+  ※ 스택트레이스/내부 예외 메시지는 절대 노출하지 않는다(서버 로그에만 기록).
+-->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오류 | Enterprise Resource Planning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100">
+
+<header class="h-16 bg-slate-900 flex items-center px-4 sm:px-8">
+    <a class="text-white text-sm sm:text-base font-bold whitespace-nowrap" href="/">ERP SYSTEM</a>
+</header>
+
+<main class="flex justify-center px-4 pt-16">
+    <div class="w-full max-w-[500px] bg-white rounded-xl border border-slate-200 px-8 sm:px-10 py-10 text-center">
+
+        <div class="flex justify-center mb-6">
+            <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                <span class="text-red-500 text-xl font-bold">!</span>
+            </div>
+        </div>
+
+        <p class="text-4xl font-bold text-slate-900" th:text="${status}">500</p>
+        <p class="text-sm text-slate-400 mt-1" th:text="${error}">Internal Server Error</p>
+
+        <!-- BasicErrorController 경유 시 message는 비어 있으므로 상태코드별 기본 문구를 보여준다 -->
+        <p class="text-sm text-slate-600 mt-6"
+           th:text="${not #strings.isEmpty(message) ? message
+                    : (status == 403 ? '해당 페이지에 접근할 권한이 없습니다.'
+                    : (status == 404 ? '요청하신 페이지를 찾을 수 없습니다.'
+                    : (status != null and status < 500 ? '잘못된 요청입니다. 입력값을 확인해 주세요.'
+                    : '요청을 처리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.')))}">
+            요청을 처리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.
+        </p>
+
+        <div class="mt-8 flex justify-center gap-3">
+            <a href="javascript:history.back()"
+               class="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50">이전 페이지</a>
+            <a th:href="@{/}"
+               class="px-4 py-2 text-sm rounded-md bg-slate-900 text-white hover:bg-slate-700">홈으로</a>
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

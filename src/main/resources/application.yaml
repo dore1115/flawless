@@ -16,6 +16,14 @@ spring:
         jdbc:
           time_zone: Asia/Seoul
 server:
+  # REQ-NF-G-004: 오류 응답에 스택트레이스/예외 정보가 노출되지 않도록 명시
+  error:
+    include-stacktrace: never
+    include-exception: false
+    include-message: never
+    include-binding-errors: never
+    whitelabel:
+      enabled: false
   tomcat:
     mbeanregistry:
       enabled: true
