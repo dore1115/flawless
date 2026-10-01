@@ -36,6 +36,11 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 
     // 재고 조회(IV-002) 화면의 검색(REQ-F-C-008 재고 검색)용: 활성 품목 중 이름에 검색어가
     // 포함된 것만 조회.
+    // //! [REQ-NF-I-004] 참고: 아래 List 반환 메서드 2개(findAllByDeletedFalseOrderByCreatedAtAsc,
+    // findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc)는 전체 데이터를 한 번에 가져오던
+    // 옛 구현(InventoryService.getFilteredActiveItems())이 쓰던 것으로, 그 결함을 고치면서 더 이상
+    // 쓰이지 않게 됨. 대신 아래 Page 반환 메서드로 대체함. 다른 곳에서 쓰는지 확인 후 문제 없으면
+    // 다음 정리 때 삭제 가능.
     List<Item> findAllByDeletedFalseAndNameContaining(String name);
 
     // 재고 조회(IV-002) 화면이 품목 관리(IV-001)와 정렬 순서가 달라서(품목 관리는
@@ -45,4 +50,13 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     List<Item> findAllByDeletedFalseOrderByCreatedAtAsc();
 
     List<Item> findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(String name);
+
+    //! [REQ-NF-I-004] 해결: 재고 조회(IV-002) 화면이 findAll류로 조건에 맞는 전체 품목을
+    //! 한 번에 다 가져온 뒤 애플리케이션 메모리에서 페이지를 잘라 쓰던 결함(페이지네이션 부재)을
+    //! 고치기 위해 추가한 메서드. ItemController.list()가 쓰는 findAllByDeletedFalse(Pageable)
+    //! (위 파일 상단)과 같은 패턴으로, DB가 LIMIT/OFFSET을 처리하도록 Pageable을 그대로 넘김.
+    //! 정렬은 호출 측(InventoryService.getFilteredActiveItems())에서 Pageable에 담아 넘기는
+    //! Sort(createdAt 오름차순)를 그대로 따름 - 위 findAllByDeletedFalseOrderByCreatedAtAsc()가
+    //! 메서드 이름에 정렬을 고정해둔 것과 달리, 여기서는 Pageable의 Sort가 그 역할을 대신함.
+    Page<Item> findAllByDeletedFalseAndNameContaining(String name, Pageable pageable);
 }

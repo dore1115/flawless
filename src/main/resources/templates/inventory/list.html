@@ -4,12 +4,14 @@
   대응 Controller: InventoryController.list() [GET /inventory/items]
   관련 요구사항: REQ-F-S-011(재고 조회), REQ-F-C-008(재고 검색)
 
-  Model 속성: items(List<Item>), quantities(Map<Long,Integer>, 품목 id별 현재 재고 수량),
+  Model 속성: items(List<StockRowDto>, 품목명/현재 수량만 담은 응답 DTO),
               keyword(String, 검색어 - 검색창 재표시용), currentPage(int), totalPages(int)
 
-  //! [REQ-NF-I-001] Item 엔티티를 변환 없이 그대로 받아 화면에서 사용함(다른 화면들처럼 Row Dto로
-  //! 변환하지 않음 - 의도적으로 남겨둔 결함). InventoryService.getCurrentQuantities() 주석 참고.
-  ※ REQ-NF-G-003/REQ-NF-I-002로 로그인만 되어 있으면 누구나 접근 가능(별도 권한 검증 없음).
+  //! [REQ-NF-I-001] 해결 완료(2026-09-21): Item 엔티티를 변환 없이 그대로 받아 화면에서 쓰던 것을
+  //! StockRowDto로 바꿈(dto/StockRowDto.java, InventoryController.list() 참고). deleted/
+  //! createdAt/updatedAt 같은 내부 필드는 더 이상 이 화면에서 접근할 수 없음.
+  ※ REQ-NF-G-003/REQ-NF-I-002 해결 완료 - 이제 물류관리자(ADMIN_IV)만 등록/수정/삭제/입출고 가능.
+     (이 화면(GET /inventory/items) 자체는 조회용이라 로그인만 되어 있으면 계속 접근 가능함.)
 
   품목명을 누르면 재고 입출고 이력 조회(IV-005, REQ-F-S-012) 화면(GET /inventory/{id}/history,
   InventoryController.history() 참고)으로 이동함 - 화면설계서 3-1 URL·Controller 표대로
@@ -80,7 +82,7 @@
                             <a th:href="@{/inventory/{id}/history(id=${item.id})}" th:text="${item.name}"
                                class="text-blue-600 font-medium hover:underline">장갑</a>
                         </td>
-                        <td class="py-3 text-right text-gray-900" th:text="${quantities.get(item.id)} + ' 개'">0 개</td>
+                        <td class="py-3 text-right text-gray-900" th:text="${item.quantity} + ' 개'">0 개</td>
                     </tr>
                     </tbody>
                 </table>

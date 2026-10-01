@@ -4,6 +4,7 @@ import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.dto.StockHistoryRowDto;
+import com.dsa.flawless.dto.StockRowDto;
 import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
 import com.dsa.flawless.domain.Item;
@@ -14,6 +15,10 @@ import java.beans.PropertyEditorSupport;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -112,21 +117,13 @@ public class InventoryController {
             return "inventory/inbound";
         }
 
-        //! [REQ-NF-I-002] 비기능요구사항 결함: "품목 등록/수정/삭제, 재고 정보 삭제" API에 물류관리자 권한 검증이 빠져 있음
-        //!   - 증상: 화면설계서상 이 입고 화면은 "물류관리자 전용"인데, 지금은 로그인만 되어 있으면
-        //!     어떤 사원이든(직급 무관) 이 API를 그대로 호출해 정상 처리됨. 게다가 이 메서드는
-        //!     로그인 사원이 누구인지조차 확인하지 않고 employeeId를 1로 고정해둔 상태임(출고 처리는
-        //!     이미 로그인 사원을 조회하도록 고쳐져 있음 - 아래 outbound() 메서드 참고).
-        //!   - 해결 방법:
-        //!     1) (우선 적용 가능) outbound()처럼 employeeRepository.findByUsername(authentication
-        //!        .getName())으로 로그인 사원을 먼저 조회하고, 그 사원의 Role이 물류관리자인지 직접
-        //!        확인해서 아니면 예외(예: AccessDeniedException)를 던져 403으로 응답하도록 고침.
-        //!     2) (근본 해결) REQ-NF-G-003(전역 인가 아키텍처 부재)이 먼저 해결된 뒤, SecurityConfig에
-        //!        "/inventory/inbound", "/inventory/outbound", "/inventory"(POST) 등을
-        //!        hasRole("LOGISTICS_MANAGER")로 제한하는 규칙을 추가하면 컨트롤러마다 따로 권한
-        //!        코드를 넣지 않아도 됨(요구사항정의서 비고: "G3가 먼저 갖춰지면 근본적으로 해결됨").
-        //!   - 지금은 의도적으로 미적용 상태로 남겨둔 결함이라 고치지 않았고, 로그인 사원 조회조차
-        //!     안 해서 임시로 employeeId=1L을 그대로 씀.
+        //! [REQ-NF-I-002] 비기능요구사항 결함: "품목 등록/수정/삭제, 재고 정보 삭제" API에 물류관리자 권한 검증이 빠져 있었음
+        //!   - 해결 완료(2026-09-17): SecurityConfig.securityFilterChain()에 POST /inventory,
+        //!     POST /inventory/*, POST /inventory/*/delete를 hasRole("ADMIN_IV")로 제한함.
+        //!   - 남은 별개 문제: 이 메서드는 로그인 사원이 누구인지 조회하지 않고 employeeId를 1로
+        //!     고정해둔 상태임(출고 처리는 이미 로그인 사원을 조회하도록 되어 있음 - 아래 outbound()
+        //!     메서드 참고). 이건 REQ-NF-I-002(Authority 미비)가 아니라 별개의 품질 이슈라 이번
+        //!     수정 범위에서는 건드리지 않음.
         Long employeeId = 1L;
 
         try {
@@ -217,9 +214,9 @@ public class InventoryController {
                         "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + authentication.getName()));
         Long employeeId = employee.getId();
 
-        //! [REQ-NF-I-002] "누가 로그인했는지"는 위에서 정확히 알아내지만, "이 사원이 물류관리자인지"는
-        //! 확인하지 않아서 아무 사원이나 출고 처리가 가능한 상태임(증상/해결 방법은 위 inbound() 메서드의
-        //! employeeId 선언부 주석에 자세히 적어둠 - 같은 결함, 같은 해결 방법이 그대로 적용됨).
+        //! [REQ-NF-I-002] 해결 완료(2026-09-17): SecurityConfig에서 POST /inventory/outbound를
+        //! hasRole("ADMIN_IV")로 제한해서, 여기 도달하는 시점엔 이미 물류관리자로 확인된 상태임
+        //! (자세한 내용은 위 inbound() 메서드의 employeeId 선언부 주석 참고).
 
         try {
             inventoryService.outbound(requestDto, employeeId);
@@ -256,33 +253,37 @@ public class InventoryController {
     /**
      * IV-002 재고 조회 화면(REQ-F-S-011). name이 있으면 재고 검색(REQ-F-C-008)까지 함께 처리함.
      */
-    //! [REQ-NF-I-004] 페이지네이션 부재 결함: DB에는 Pageable 없이 조건에 맞는 전체 품목을
-    //! 한 번에 다 가져오게 해두고(InventoryService.getFilteredActiveItems() 참고), 여기서
-    //! 자바 메모리 상 subList()로 요청 페이지만 잘라냄(의도적으로 남겨둔 성능 결함). 해결 방법:
-    //! ItemController.list()처럼 Pageable을 받는 리포지토리 메서드로 바꿔서 DB가 LIMIT/OFFSET을
-    //! 처리하도록 함.
+    //! [REQ-NF-I-001] 해결 완료(2026-09-21): 이 메서드가 Item 엔티티를 변환 없이 그대로 Model에
+    //! 담아 템플릿에 넘기던 결함을 수정함. StockRowDto(dto/StockRowDto.java 참고)로 변환해서
+    //! 품목명/현재 수량만 담아 넘기도록 바꿨고, deleted/createdAt/updatedAt 같은 내부 필드는
+    //! 더 이상 템플릿에서 접근할 수 없음. InventoryService.getCurrentQuantities()의 N+1 쿼리
+    //! (REQ-NF-I-003)는 이번 수정 범위가 아니라 그대로 둠.
+    //! [REQ-NF-I-004] 해결 완료(2026-09-21): DB에는 Pageable 없이 조건에 맞는 전체 품목을 한 번에
+    //! 다 가져오게 해두고 여기서 자바 메모리 상 subList()로 요청 페이지만 잘라내던 결함(페이지네이션
+    //! 부재)을 고침. ItemController.list()와 같은 패턴으로 PageRequest(Pageable)를 만들어
+    //! InventoryService.getFilteredActiveItems()에 그대로 넘기고, DB가 LIMIT/OFFSET으로 걸러준
+    //! Page<Item> 결과를 그대로 씀 - currentPage/totalPages도 Page 객체가 계산해 주는 값을 그대로
+    //! 꺼내 쓰면 돼서, 기존에 직접 계산하던 코드(Math.ceil/subList 등)가 전부 없어짐. 정렬은 기존과
+    //! 동일하게 createdAt 오름차순을 유지(품목 관리(IV-001)와 페이지별 순서를 맞추기 위함 - 위
+    //! getFilteredActiveItems() 주석 참고).
 
     @GetMapping("/items")
     public String list(@RequestParam(required = false) String name,
                         @RequestParam(defaultValue = "0") int page,
                         Model model) {
-        List<Item> matchedItems = inventoryService.getFilteredActiveItems(name);
-
-        int totalCount = matchedItems.size();
-        int totalPages = (totalCount == 0) ? 1 : (int) Math.ceil((double) totalCount / STOCK_PAGE_SIZE);
-        int currentPage = Math.max(0, Math.min(page, totalPages - 1));
-
-        int fromIndex = Math.min(currentPage * STOCK_PAGE_SIZE, totalCount);
-        int toIndex = Math.min(fromIndex + STOCK_PAGE_SIZE, totalCount);
-        List<Item> pagedItems = matchedItems.subList(fromIndex, toIndex);
+        Pageable pageable = PageRequest.of(page, STOCK_PAGE_SIZE, Sort.by("createdAt").ascending());
+        Page<Item> matchedPage = inventoryService.getFilteredActiveItems(name, pageable);
+        List<Item> pagedItems = matchedPage.getContent();
 
         Map<Long, Integer> quantities = inventoryService.getCurrentQuantities(pagedItems);
+        List<StockRowDto> stockRows = pagedItems.stream()
+                .map(item -> new StockRowDto(item, quantities.getOrDefault(item.getId(), 0)))
+                .toList();
 
-        model.addAttribute("items", pagedItems);
-        model.addAttribute("quantities", quantities);
+        model.addAttribute("items", stockRows);
         model.addAttribute("keyword", name);
-        model.addAttribute("currentPage", currentPage);
-        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("currentPage", matchedPage.getNumber());
+        model.addAttribute("totalPages", Math.max(matchedPage.getTotalPages(), 1));
         return "inventory/list";
     }
 

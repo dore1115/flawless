@@ -1,12 +1,17 @@
 package com.dsa.flawless.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
 @EnableMethodSecurity
@@ -21,15 +26,21 @@ import org.springframework.security.web.SecurityFilterChain;
 //! H-005(PositionController/DepartmentController, 2026-09-22에 목록 조회까지 클래스 레벨로 확장)는
 //! 김도영 담당 범위에서 이미 적용 완료. I-002(재고 관리) 등 다른 모듈은 아직 남아 있다(담당자 확인 필요).
 public class SecurityConfig {
-
+	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http,
+			// REQ-NF-S-001: 동시 로그인 허용 수를 application.yaml에서 읽음 (값이 없으면 1)
+			@Value("${app.security.max-sessions:1}") int maxSessions) throws Exception {
+		
 		http
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/login", "/js/**").permitAll() // 로그인 화면·정적 리소스만 예외
 						.anyRequest().authenticated() //! REQ-NF-G-003 해결: 로그인 필수로 전환
+						//! [REQ-NF-I-002] 물류관리자(ADMIN_IV) 전용으로 제한: 품목 등록/수정/삭제 + 입고/출고.
+						.requestMatchers(HttpMethod.POST, "/inventory", "/inventory/*/delete").hasRole("ADMIN_IV")
+						.requestMatchers(HttpMethod.POST, "/inventory/*").hasRole("ADMIN_IV")
 				)
 				.formLogin(form -> form
 						.loginPage("/login")
@@ -40,25 +51,25 @@ public class SecurityConfig {
 				.logout(logout -> logout
 						.logoutUrl("/logout")
 						.logoutSuccessUrl("/login")
+				)
+				.sessionManagement(session -> session
+						.maximumSessions(maxSessions)
+						.maxSessionsPreventsLogin(false)
+						.expiredUrl("/login?expired")
 				);
 		return http.build();
 	}
-
+	
 	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new PasswordEncoder() {
-
-			@Override
-			public String encode(CharSequence rawPassword) {
-				return rawPassword.toString();
-			}
-
-			@Override
-			public boolean matches(CharSequence rawPassword, String encodedPassword) {
-				return rawPassword.toString().equals(encodedPassword);
-			}
-		};
+	public PasswordEncoder passwordEncoder(
+			// REQ-NF-S-001: 비밀번호 암호화 강도를 application.yaml에서 읽음 (값이 없으면 10)
+			@Value("${app.security.bcrypt-strength:10}") int bcryptStrength) {
+		return new BCryptPasswordEncoder(bcryptStrength);
 	}
-
-
+	
+	@Bean
+	public HttpSessionEventPublisher httpSessionEventPublisher() {
+		return new HttpSessionEventPublisher();
+	}
+	
 }

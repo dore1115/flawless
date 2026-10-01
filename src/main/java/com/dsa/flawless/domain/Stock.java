@@ -39,24 +39,29 @@ public class Stock extends BaseTimeEntity {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
-    //! [REQ-NF-I-005] 비기능요구사항 결함: 재고 출고 모듈의 동시성 결함
-    //!   - 증상: 같은 품목에 대해 여러 출고 요청이 동시에 들어오면(예: 재고 5개인데 2개짜리 출고
-    //!     요청이 동시에 3건 들어옴), InventoryService.outbound()의 "재고 조회 → 수량 비교 →
+    //! [REQ-NF-I-005] 해결: 재고 출고 모듈의 동시성 결함
+    //!   - 증상이었던 내용: 같은 품목에 대해 여러 출고 요청이 동시에 들어오면(예: 재고 5개인데 2개짜리
+    //!     출고 요청이 동시에 3건 들어옴), InventoryService.outbound()의 "재고 조회 → 수량 비교 →
     //!     차감(decrease) → 저장" 네 단계 사이에 아무 락도 없어서, 여러 요청이 전부 "재고 충분함"으로
-    //!     통과한 뒤 각자 차감해버려 실제 재고보다 더 많은 수량이 출고 처리될 수 있음(최종 재고가
-    //!     음수가 될 수도 있음) - 전형적인 Lost Update/Race Condition.
-    //!   - 해결 방법(택 1):
+    //!     통과한 뒤 각자 차감해버려 실제 재고보다 더 많은 수량이 출고 처리될 수 있었음(최종 재고가
+    //!     음수가 될 수도 있음) - 전형적인 Lost Update/Race Condition. 재고 1개짜리 품목에 8건을
+    //!     동시 출고 요청해서 5~6건이 성공 처리되는 것을 직접 재현해 확인함.
+    //!   - 고려했던 두 방법:
     //!     1) 낙관적 락(Optimistic Lock): DB에
     //!        `ALTER TABLE stock ADD COLUMN version INT NOT NULL DEFAULT 0;` 로 컬럼 추가 후,
-    //!        아래처럼 @Version 필드를 살리면 JPA가 저장 시점마다 버전을 자동으로 검사·증가시킴.
+    //!        아래 @Version 필드를 살리면 JPA가 저장 시점마다 버전을 자동으로 검사·증가시킴.
     //!        이러면 동시에 두 트랜잭션이 같은 Stock 행을 수정하려 할 때, 나중에 커밋하는 쪽이
     //!        OptimisticLockingFailureException을 받음 → InventoryService.outbound()에서 그
     //!        예외를 잡아 "다시 시도해 주세요" 안내를 하거나 @Retryable로 자동 재시도하도록 고쳐야 함.
-    //!     2) 비관적 락(Pessimistic Lock): StockRepository.findByItemId()에
-    //!        `@Lock(LockModeType.PESSIMISTIC_WRITE)`를 붙이면, 한 트랜잭션이 특정 재고 행을 조회하는
-    //!        순간 DB 차원에서 그 행을 잠가 다른 트랜잭션이 끝날 때까지 기다리게 만듦(동시 요청이
-    //!        많을 때 낙관적 락보다 더 확실히 막지만, 그만큼 대기 시간이 늘어날 수 있음).
-    //!   - 지금은 두 방법 다 적용하지 않은 의도적 결함 상태라 @Version 필드를 아래처럼 주석 처리해둠.
+    //!     2) 비관적 락(Pessimistic Lock): StockRepository에
+    //!        `@Lock(LockModeType.PESSIMISTIC_WRITE)`가 붙은 findByItemIdForUpdate()를 추가해서, 한
+    //!        트랜잭션이 특정 재고 행을 조회하는 순간 DB 차원에서 그 행을 잠가 다른 트랜잭션이 끝날
+    //!        때까지 기다리게 만듦(동시 요청이 많을 때 대기 시간이 늘어날 수 있지만 재시도 로직 없이
+    //!        확실하게 막을 수 있음).
+    //!   - 채택한 방법: 요구사항(REQ-NF-I-005)에 구체적인 응답시간 목표치가 없고 이 프로젝트 규모에서
+    //!     동시 부하가 크지 않아, 재시도 로직이 필요 없는 2) 비관적 락으로 해결함
+    //!     (InventoryService.outbound() 및 StockRepository.findByItemIdForUpdate() 참고).
+    //!     낙관적 락 방식은 채택하지 않았으므로 @Version 필드는 아래처럼 계속 주석 처리된 채로 둠.
     /*
      * @Column(name = "version", nullable = false)
      * private int version = 0;
