@@ -2,6 +2,7 @@ package com.dsa.flawless.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.dsa.flawless.util.LogMasker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -38,7 +39,7 @@ public class GlobalExceptionHandler {
     public ModelAndView handleBusinessException(BusinessException e, HttpServletRequest request, HttpServletResponse response) {
         ErrorCode errorCode = e.getErrorCode();
         log.warn("[{}] {} {} - code={}, detail={}", e.getClass().getSimpleName(),
-                request.getMethod(), request.getRequestURI(), errorCode.name(), e.getMessage());
+                request.getMethod(), request.getRequestURI(), errorCode.name(), LogMasker.maskText(e.getMessage()));
         return errorView(errorCode.getStatus(), errorCode.getMessage(), request, response);
     }
 
@@ -65,7 +66,9 @@ public class GlobalExceptionHandler {
             log.error("[{}] {} {}", e.getClass().getSimpleName(), request.getMethod(), request.getRequestURI(), e);
             return errorView(status, DEFAULT_MESSAGE, request, response);
         }
-        log.warn("[{}] {} {} - {}", e.getClass().getSimpleName(), request.getMethod(), request.getRequestURI(), e.getMessage());
+        // 검증 실패 메시지 등에는 사용자가 입력한 값(rejected value)이 그대로 들어 있을 수 있어 마스킹해서 남긴다.
+        log.warn("[{}] {} {} - {}", e.getClass().getSimpleName(), request.getMethod(), request.getRequestURI(),
+                LogMasker.maskText(e.getMessage()));
         return errorView(status, clientErrorMessage(status), request, response);
     }
 
