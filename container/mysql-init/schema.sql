@@ -23,6 +23,7 @@ CREATE TABLE department (
     id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '부서 고유 식별자(기본키)',
     department_name VARCHAR(50)  NOT NULL                COMMENT '부서명. 신설/명칭수정 시 중복 불가',
     is_active       TINYINT(1)   NOT NULL DEFAULT 1       COMMENT '사용 가능 여부. 삭제 대신 0으로 전환(soft delete)',
+    version         INT          NOT NULL DEFAULT 0       COMMENT 'REQ-NF-H-009(동시성/Lost Update) 개선: JPA 낙관적 락 버전 컬럼. save() 때마다 자동 증가',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시(갱신 시 자동 반영)',
     PRIMARY KEY (id),
@@ -37,6 +38,7 @@ CREATE TABLE position (
     id            BIGINT      NOT NULL AUTO_INCREMENT COMMENT '직책 고유 식별자(기본키)',
     position_name VARCHAR(50) NOT NULL                COMMENT '직책명. 신설/명칭변경 시 중복 불가',
     is_active     TINYINT(1)  NOT NULL DEFAULT 1       COMMENT '사용 가능 여부. 삭제 대신 0으로 전환(soft delete)',
+    version       INT         NOT NULL DEFAULT 0       COMMENT 'REQ-NF-H-009(동시성/Lost Update) 개선: JPA 낙관적 락 버전 컬럼. save() 때마다 자동 증가',
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
     updated_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시(갱신 시 자동 반영)',
     PRIMARY KEY (id),
@@ -52,9 +54,11 @@ CREATE TABLE position (
 --    * password: REQ-NF-L-001(비밀번호 평문 저장)이 아직 "미적용" 결함이므로, 이 컬럼은
 --      해시 여부와 무관하게 VARCHAR(255)로 둠. 초기 구현 단계에서는 평문을 넣어 결함을
 --      재현하고, 개선 단계에서 BCrypt 해시로 교체하면 됨(컬럼 정의 자체는 변경 불필요).
---    * department_id/position_id에는 의도적으로 인덱스를 걸지 않았음
---      (REQ-NF-H-009 "인덱스 부재로 인한 Full scan" 결함을 재현하기 위함).
---      해당 결함을 개선할 때 idx_employee_department_id / idx_employee_position_id를 추가할 것.
+--    * department_id/position_id: 원래는 REQ-NF-H-008("코드 기준 조회, 삭제 시 소속 사원 조회"
+--      인덱스 부재로 인한 Full scan) 결함을 재현하기 위해 의도적으로 인덱스를 걸지 않았으나,
+--      2026-09-21 개선 완료 — idx_employee_department_id / idx_employee_position_id를 추가해
+--      PositionRepository.findByPosition()/DepartmentRepository.findByDepartment()(직책·부서
+--      삭제 시 "소속 사원 조회"에 쓰임)가 더 이상 employee 테이블을 Full scan하지 않도록 했다.
 -- ---------------------------------------------------------
 DROP TABLE IF EXISTS employee;
 CREATE TABLE employee (
@@ -68,14 +72,16 @@ CREATE TABLE employee (
     department_id BIGINT       NOT NULL                COMMENT 'department.id 참조',
     position_id   BIGINT       NOT NULL                COMMENT 'position.id 참조',
     role          VARCHAR(20)  NOT NULL DEFAULT 'EMPLOYEE' COMMENT 'ADMIN_HR/ADMIN_IV/EMPLOYEE 중 하나',
+    version       INT          NOT NULL DEFAULT 0       COMMENT 'REQ-NF-H-009(동시성/Lost Update) 개선: JPA 낙관적 락 버전 컬럼. save() 때마다 자동 증가',
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
     updated_at    DATETIME     NULL                    COMMENT '수정일시(공통 컬럼)',
     PRIMARY KEY (id),
     UNIQUE KEY uq_employee_username (username),
     UNIQUE KEY uq_employee_email (email),
+    KEY idx_employee_department_id (department_id),
+    KEY idx_employee_position_id (position_id),
     CONSTRAINT fk_employee_department FOREIGN KEY (department_id) REFERENCES department (id),
     CONSTRAINT fk_employee_position   FOREIGN KEY (position_id)   REFERENCES position (id)
-    -- idx_employee_department_id / idx_employee_position_id 는 의도적으로 생략(위 설명 참고)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사원 계정';
 
 -- ---------------------------------------------------------

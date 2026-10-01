@@ -4,13 +4,12 @@ import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Position;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-//! REQ-NF-H-007 N+1 (실측 먼저 필요)
-//! EmployeeRepository에 join fetch 쿼리를 추가해서 EmployeeAssignmentService.findAll()이 그걸 쓰게 바꾸기
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 	// TODO(REQ-NF-M-003 하드 삭제 + 감사로그 부재): JpaRepository를 상속하고 있어
@@ -26,4 +25,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 	List<Employee> findByDepartment(Department department);
 
     Employee getReferenceByUsername(String username);
+
+    // REQ-NF-H-007 개선: HR-001(사원 목록) 화면이 기존에는 findAll()(= "select e from Employee e")로
+    // 조회했는데, department/position이 @ManyToOne(fetch = EAGER)로 선언돼 있어도 JPQL에 명시적인
+    // JOIN FETCH가 없으면 Hibernate가 각 연관관계를 행마다 추가 SELECT로 채운다 — 즉 EAGER 설정만으로는
+    // N+1을 막지 못한다(실측으로 확인됨: 사원 목록 1쿼리 + 부서/직책 개별 쿼리가 각각 추가로 발생).
+    // department_id/position_id는 DB(employee 테이블)에서 NOT NULL이라 모든 사원이 항상 값을 갖고
+    // 있으므로, LEFT JOIN이 아닌 INNER JOIN FETCH를 써도 조회 결과에서 사원이 누락될 위험이 없다.
+    @Query("SELECT e FROM Employee e JOIN FETCH e.department JOIN FETCH e.position")
+    List<Employee> findAllWithDepartmentAndPosition();
 }

@@ -1,37 +1,42 @@
 package com.dsa.flawless.service;
 
 import com.dsa.flawless.domain.Department;
+import com.dsa.flawless.domain.DepartmentHistory;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.exception.DepartmentInUseException;
+import com.dsa.flawless.repository.DepartmentHistoryRepository;
 import com.dsa.flawless.repository.DepartmentRepository;
 import com.dsa.flawless.repository.EmployeeRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
  * REQ-F-S-007(부서 신설)·REQ-F-S-008(부서 삭제)의 실제 처리를 담당하는 서비스 계층.
  *
- * 결함 시딩(성능_보안_결함_시딩_매트릭스, REQ-NF-H-002 - 입력값 서버단 검증 부재):
- * REQ-F-S-005(직책 신설)의 PositionService와 동일하게, create()는 의도적으로 부서명 중복 검사와
- * 필수값 검사를 하지 않는다. 화면(hr/department/list.html)의 <input required>는 브라우저에서만
- * 막을 뿐이라, 폼을 거치지 않고 API(POST /hr/departments)를 직접 두드리면 빈 문자열이나 중복된
- * 부서명도 그대로 저장을 시도하게 된다.
- *   - 빈 문자열("")은 department_name이 NOT NULL이라서 그대로 저장되어 버린다(빈 부서가 생김).
- *   - 중복된 부서명은 department 테이블의 UNIQUE 제약(uk_department_name)에 걸려 저장 자체는
- *     막히지만, 애플리케이션이 이를 미리 확인하지 않았기 때문에 DataIntegrityViolationException이
- *     그대로 터진다 — GlobalExceptionHandler가 없는 상태(REQ-NF-G-004)라 스택 트레이스가 담긴 500
- *     에러 페이지가 사용자에게 그대로 노출된다.
- * 개선 시 이 메서드 호출 전에 부서명 공백 여부와 중복 여부를 먼저 확인해 400으로 응답하도록 고친다.
+ * REQ-NF-H-002 개선 완료: PositionService.create()와 동일한 패턴 — 저장 전에 부서명 공백 여부와
+ * 중복 여부를 확인해 400(Bad Request)으로 응답한다. 중복 검사는
+ * {@link DepartmentRepository#existsByDepartmentNameAndActiveTrue}로 active(사용 중)인 부서만
+ * 대상으로 하므로, 삭제(비활성화)된 이름은 중복으로 치지 않고 재사용(재신설)할 수 있다 —
+ * 담당자 요청(2026-09-21)에 따른 결정.
  *
- * 결함 시딩(성능_보안_결함_시딩_매트릭스, REQ-NF-H-005 - 직책/부서 삭제 권한·감사로그 결함):
- * PositionService.delete()와 동일한 결정 — delete()는 의도적으로 (1) 호출자의 권한(Role)을
- * 확인하지 않고, (2) 누가/언제 삭제했는지 남기는 감사 로그도 기록하지 않는다. "소속 사원이 있으면
- * 삭제를 막는다"는 업무 규칙만 지킨다. 개선 시 컨트롤러 진입 전 인가 체크를 추가하고, 삭제 처리
- * 성공 시 처리자·시각·변경 전후 값을 department_history 테이블에 남기도록 고친다.
+ * REQ-NF-H-005 개선 완료 — 삭제 Authority 미비 + 감사로그 부재:
+ * PositionService와 완전히 동일한 패턴 —
+ * (1) DepartmentController.delete()에 @PreAuthorize("hasRole('ADMIN_HR')")를 추가(2026-09-17).
+ * (2) delete()가 부서 비활성화에 성공한 뒤 {@link DepartmentHistory#ofDelete}로 처리자/시각/
+ *     변경 전 값을 department_history 테이블에 append한다(2026-09-22). 자세한 설계 이유는
+ *     {@link PositionService} 클래스 주석 참고.
+ *
+ * REQ-NF-H-009 개선 완료 — 동시성 문제(Lost Update):
+ * PositionService.delete()와 동일한 패턴 — {@link com.dsa.flawless.domain.Department#version}에
+ * @Version 필드를 추가하고, save() 대신 saveAndFlush()를 써서 메서드 안에서 즉시 버전 충돌을
+ * 확인하도록 했다.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,6 +45,7 @@ public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final EmployeeRepository employeeRepository;
+    private final DepartmentHistoryRepository departmentHistoryRepository;
 
     /**
      * HR-004(부서 목록) 화면에 보여줄 목록. PositionService.findAll()과 동일한 결정(2026-09-02) —
@@ -53,6 +59,12 @@ public class DepartmentService {
 
     @Transactional
     public void create(String departmentName) {
+        if (!StringUtils.hasText(departmentName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "부서명을 입력해 주세요.");
+        }
+        if (departmentRepository.existsByDepartmentNameAndActiveTrue(departmentName)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 존재하는 부서명입니다.");
+        }
         departmentRepository.save(new Department(departmentName));
     }
 
@@ -69,6 +81,21 @@ public class DepartmentService {
             throw new DepartmentInUseException(department, members);
         }
         department.deactivate();
-        departmentRepository.save(department);
+        try {
+            departmentRepository.saveAndFlush(department);
+        } catch (OptimisticLockingFailureException e) {
+            // REQ-NF-H-009 개선: 다른 요청이 이 부서를 먼저 수정·커밋해 버전이 바뀐 상태.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "다른 요청이 먼저 이 부서를 처리했습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.");
+        }
+        // REQ-NF-H-005 개선(감사 로그): 삭제가 실제로 성공한 뒤에만 이력을 남긴다.
+        departmentHistoryRepository.save(DepartmentHistory.ofDelete(department, currentEmployeeId()));
+    }
+
+    // REQ-NF-H-005 개선(감사 로그): 현재 로그인한 사용자의 employee id를 얻는다. getReferenceByUsername()은
+    // EntityManager.getReference() 기반이라 별도 SELECT 없이 id가 채워진 프록시만 돌려준다.
+    private Long currentEmployeeId() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return employeeRepository.getReferenceByUsername(username).getId();
     }
 }
