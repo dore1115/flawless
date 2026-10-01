@@ -1,5 +1,6 @@
 package com.dsa.flawless.aop;
 
+import com.dsa.flawless.util.LogMasker;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -32,7 +33,10 @@ import java.util.regex.Pattern;
  *   [AUDIT][재고][변경] user=kim ItemService.create(name=볼펜) - 실패: DuplicateItemNameException (3ms)
  *
  * - 조회/변경 구분: @Transactional(readOnly = true)면 조회, 그 외는 변경.
- * - 비밀번호 등 민감한 파라미터는 값 대신 **** 로 남긴다.
+ * - 비밀번호/개인정보는 파라미터 이름 기준으로 LogMasker로 마스킹한다.
+ *     password·token 등 → ****, email → ho***@corp.com, phone → 010-****-5678,
+ *     address → 서울특별시 강남구 ***, 인사 업무의 name(사원 이름) → 홍*동
+ *   그 외 값(DTO toString 포함)도 이메일·전화번호·주민등록번호 패턴이 보이면 LogMasker.maskText로 가린다.
  * - Entity가 인자로 넘어와도 toString()으로 지연 로딩이 일어나지 않도록, 단순 값/DTO만 내용을 남기고
  *   그 외 객체는 타입 이름만 남긴다. 반환값은 남기지 않는다(조회 결과에 개인정보가 포함될 수 있음).
  * - 예외의 스택트레이스는 GlobalExceptionHandler가 남기므로 여기서는 예외 타입만 남긴다.
@@ -42,7 +46,13 @@ import java.util.regex.Pattern;
 @Component
 public class AuditLogAspect {
 
-    private static final Pattern SENSITIVE_PARAM = Pattern.compile("(?i).*(password|passwd|pwd|secret|token).*");
+    private static final Pattern SECRET_PARAM = Pattern.compile("(?i).*(password|passwd|pwd|secret|token).*");
+    private static final Pattern EMAIL_PARAM = Pattern.compile("(?i).*email.*");
+    private static final Pattern PHONE_PARAM = Pattern.compile("(?i).*(phone|mobile|tel).*");
+    private static final Pattern ADDRESS_PARAM = Pattern.compile("(?i).*address.*");
+    // 재고의 name은 품목명이라 가리지 않고, 인사 업무의 name/employeeName만 사원 이름으로 보고 가린다.
+    private static final Pattern PERSON_NAME_PARAM = Pattern.compile("(?i)(name|employeeName|realName)");
+    private static final String HR_DOMAIN = "인사";
     private static final String DTO_PACKAGE = "com.dsa.flawless.dto.";
     private static final int MAX_VALUE_LENGTH = 100;
 
@@ -80,7 +90,7 @@ public class AuditLogAspect {
         Method method = signature.getMethod();
         String action = isReadOnly(method, joinPoint.getTarget().getClass()) ? "조회" : "변경";
         String call = signature.getDeclaringType().getSimpleName() + "." + method.getName()
-                + "(" + formatArgs(signature.getParameterNames(), joinPoint.getArgs()) + ")";
+                + "(" + formatArgs(domain, signature.getParameterNames(), joinPoint.getArgs()) + ")";
         String user = currentUser();
 
         long start = System.currentTimeMillis();
@@ -116,14 +126,35 @@ public class AuditLogAspect {
         return authentication.getName();
     }
 
-    private String formatArgs(String[] names, Object[] args) {
+    private String formatArgs(String domain, String[] names, Object[] args) {
         StringJoiner joiner = new StringJoiner(", ");
         for (int i = 0; i < args.length; i++) {
             String name = names != null && i < names.length ? names[i] : "arg" + i;
-            String value = SENSITIVE_PARAM.matcher(name).matches() ? "****" : formatValue(args[i]);
-            joiner.add(name + "=" + value);
+            joiner.add(name + "=" + maskByName(domain, name, args[i]));
         }
         return joiner.toString();
+    }
+
+    private String maskByName(String domain, String name, Object value) {
+        if (SECRET_PARAM.matcher(name).matches()) {
+            return LogMasker.maskPassword(value);
+        }
+        if (!(value instanceof String text)) {
+            return formatValue(value);
+        }
+        if (EMAIL_PARAM.matcher(name).matches()) {
+            return LogMasker.maskEmail(text);
+        }
+        if (PHONE_PARAM.matcher(name).matches()) {
+            return LogMasker.maskPhone(text);
+        }
+        if (ADDRESS_PARAM.matcher(name).matches()) {
+            return LogMasker.maskAddress(text);
+        }
+        if (HR_DOMAIN.equals(domain) && PERSON_NAME_PARAM.matcher(name).matches()) {
+            return LogMasker.maskName(text);
+        }
+        return formatValue(value);
     }
 
     private String formatValue(Object value) {
@@ -136,7 +167,7 @@ public class AuditLogAspect {
         if (!printable) {
             return value.getClass().getSimpleName();
         }
-        String text = String.valueOf(value);
+        String text = LogMasker.maskText(String.valueOf(value));
         return text.length() > MAX_VALUE_LENGTH ? text.substring(0, MAX_VALUE_LENGTH) + "..." : text;
     }
 }
