@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,15 @@ public class Department extends BaseTimeEntity {
 
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
+
+    // REQ-NF-H-009 개선 완료: 동시성 문제(Lost Update).
+    // delete()(비활성화)가 낙관적 락 없이 곧바로 save()를 호출한다 — @Version을 추가해, 거의 동시에
+    // 들어온 두 요청이 같은 부서 행을 각자 읽어 처리하는 사이 한쪽이 먼저 커밋되면 나머지 한쪽의
+    // save()가 OptimisticLockingFailureException을 던지도록 했다. 자세한 동작은
+    // {@link com.dsa.flawless.domain.Employee#version} 주석 참고.
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version = 0;
 
     public Department(String departmentName) {
         this.departmentName = departmentName;

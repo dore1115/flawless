@@ -15,7 +15,11 @@
     결정 — "삭제" 버튼은 소속 사원이 없을 때만 실제로 비활성화를 수행하지만, 삭제 실행 권한(Role)
     검증과 감사 로그 기록은 의도적으로 넣지 않았다 — 누구나 삭제를 실행할 수 있고, 누가/언제
     삭제했는지도 기록에 남지 않는다. 자세한 내용은 DepartmentService 클래스 주석 참고.
-  Model 속성: departments(List<DepartmentRowDto>), departmentForm(DepartmentCreateForm), message(String, flash),
+  ※ REQ-NF-H-001(소속 사원 목록 Entity 직접 응답) 해결(2026-09-21): blockingEmployees는 더 이상
+    Employee 엔티티가 아니라 이름만 담은 BlockingEmployeeView DTO 목록이다 — 아래 th:text는 변경
+    없이 그대로 동작한다(BlockingEmployeeView도 name 필드를 가짐). 자세한 내용은
+    DepartmentInUseException 클래스 주석 참고.
+  Model 속성: departments(List<Department>), departmentForm(DepartmentCreateForm), message(String, flash),
               deleteBlockedName(String, flash), blockingEmployees(List<BlockingEmployeeView>, flash)
 -->
 <!DOCTYPE html>

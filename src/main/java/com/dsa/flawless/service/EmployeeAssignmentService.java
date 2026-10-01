@@ -13,6 +13,7 @@ import com.dsa.flawless.repository.PositionRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,21 @@ import org.springframework.web.server.ResponseStatusException;
  * updateEmployeeInfo()는 호출자(로그인한 인사관리자인지)를 검증하지 않는다. 로그인 기능 자체가
  * 아직 없어 지금은 인증조차 없는 상태이며, 사원 id만 알면 누구든 임의 사원의 정보를 바꿀 수 있다.
  * 개선 시 이 메서드 호출 전에 인사관리자 인증/인가를 확인하는 코드를 추가한다.
+ *
+ * REQ-NF-H-007 개선 완료: findAll()이 기존에는 {@code employeeRepository.findAll()}을 그대로 썼는데,
+ * HR-001(사원 목록) 화면에서 department/position이 EAGER임에도 사원별로 개별 SELECT가 추가로
+ * 나가는 N+1이 실측으로 확인됐다. {@link EmployeeRepository#findAllWithDepartmentAndPosition()}
+ * (JOIN FETCH 사용)로 교체해 사원 목록 + 부서 + 직책을 단일 쿼리로 가져오도록 고쳤다.
+ *
+ * REQ-NF-H-009 개선 완료 — 동시성 문제(Lost Update):
+ * updateEmployeeInfo()가 낙관적 락 없이 곧바로 save()를 호출해, 같은 사원에 대한 두 요청이 거의
+ * 동시에 처리되면 나중에 커밋되는 쪽이 먼저 커밋된 변경 내용을 그대로 덮어써버릴 수 있었다.
+ * {@link com.dsa.flawless.domain.Employee#version}에 @Version 필드를 추가해 두 트랜잭션이 같은
+ * 사원 행을 동시에 수정하려 하면 나중에 flush하는 쪽이 {@link OptimisticLockingFailureException}을
+ * 받도록 했고, 이 메서드에서 그 예외를 잡아 409(Conflict)로 응답한다. save() 대신 saveAndFlush()를
+ * 쓴 이유는, save()만 쓰면 실제 UPDATE가 트랜잭션 커밋 시점(이 메서드 바깥, @Transactional AOP가
+ * 끝나는 순간)까지 미뤄져 아래 catch 블록이 예외를 잡지 못하기 때문이다 — saveAndFlush()로
+ * 메서드 안에서 즉시 flush시켜야 그 자리에서 예외를 확인할 수 있다.
  */
 @Service
 @RequiredArgsConstructor
@@ -45,10 +61,8 @@ public class EmployeeAssignmentService {
     private final DepartmentRepository departmentRepository;
 
     @Transactional(readOnly = true)
-    public List<EmployeeRowDto> findAll() {
-        return employeeRepository.findAll().stream()
-                .map(EmployeeRowDto::new)
-                .collect(Collectors.toList());
+    public List<Employee> findAll() {
+        return employeeRepository.findAllWithDepartmentAndPosition();
     }
 
     @Transactional(readOnly = true)
@@ -84,10 +98,16 @@ public class EmployeeAssignmentService {
         Position position = findActivePositionOrBadRequest(positionId);
         Department department = findActiveDepartmentOrBadRequest(departmentId);
 
-        // 결함 시딩(F7/REQ-NF-H-010, Lost Update): 낙관적/비관적 락 없이 그대로 갱신한다.
         employee.updatePersonalInfo(name, email, phone, address);
         employee.changeAssignment(position, department);
-        employeeRepository.save(employee);
+        try {
+            employeeRepository.saveAndFlush(employee);
+        } catch (OptimisticLockingFailureException e) {
+            // REQ-NF-H-009 개선: 다른 요청이 이 사원 정보를 먼저 수정·커밋해 버전이 바뀐 상태.
+            // 그대로 덮어쓰지 않고 409로 응답해, 화면에서 최신 정보를 다시 불러온 뒤 재시도하게 한다.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "다른 요청이 먼저 이 사원 정보를 수정했습니다. 최신 정보를 다시 불러온 뒤 다시 시도해 주세요.");
+        }
     }
 
     private void validatePersonalInfo(String name, String email, String phone, String address) {

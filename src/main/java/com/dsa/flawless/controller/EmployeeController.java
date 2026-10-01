@@ -3,6 +3,7 @@ package com.dsa.flawless.controller;
 import com.dsa.flawless.dto.EmployeeAssignmentForm;
 import com.dsa.flawless.service.EmployeeAssignmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,10 +23,17 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  *
  * 비즈니스 로직/유효성 검증은 {@link EmployeeAssignmentService}에 있다 — 컨트롤러는
  * Repository를 직접 호출하지 않고 서비스 계층만 거친다(ArchUnit으로 계층을 강제할 계획이므로).
+ *
+ * REQ-NF-H-004(직책/부서 단일 변경 Authority 미비, IDOR) 개선: 이 컨트롤러 전체를
+ * {@code hasRole('ADMIN_HR')}로 제한한다 — 기획서상 "인사정보 수정은 인사관리자만 가능"이므로
+ * 목록 조회부터 정보 변경까지 전부 인사관리자 전용으로 묶는 게 맞다.
+ * {@link com.dsa.flawless.config.SecurityConfig}에 {@code @EnableMethodSecurity}가 선행돼 있어야
+ * 이 어노테이션이 실제로 동작한다.
  */
 @Controller
 @RequestMapping("/hr/employees")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN_HR')")
 public class EmployeeController {
 
     private final EmployeeAssignmentService employeeAssignmentService;
@@ -47,11 +55,9 @@ public class EmployeeController {
         return "hr/employee/info";
     }
     
-    // TODO(REQ-NF-M-001 IDOR / 권한 상승 방지 부재): 이 엔드포인트는 ROLE_ADMIN_HR 전용이어야
-    // 하는데 @PreAuthorize가 없고, SecurityConfig도 anyRequest().authenticated()만 걸어놔서
-    // 로그인만 했으면 어떤 role이든 id를 바꿔가며 임의 사원 정보를 수정할 수 있다(IDOR).
-    // -> @PreAuthorize("hasRole('ADMIN_HR')") 추가 (SecurityConfig에 @EnableMethodSecurity 선행 필요)
-    
+    // REQ-NF-H-004 개선 완료: 클래스 레벨 @PreAuthorize("hasRole('ADMIN_HR')")가 이 메서드에도
+    // 그대로 적용된다 — ADMIN_HR이 아닌 계정이 id를 바꿔가며 호출하면 403으로 차단된다.
+
     @PostMapping("/{id}/assignment")
     public String updateAssignment(@PathVariable Long id,
                                     @ModelAttribute EmployeeAssignmentForm form,
