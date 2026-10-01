@@ -69,7 +69,7 @@ public class Attendance extends BaseTimeEntity {
     // seconds단위는 버리고, 분 단위만 late_minutes에 저장
     public void clockIn(LocalDateTime now) {
         if (isClockedIn()) {
-            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! REQ-NF-G-004: Exception handler 생성 필요
+            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! REQ-NF-G-004 개선: GlobalExceptionHandler에서 처리
         }
         LocalTime CLOCK_IN_CRITERIA = LocalTime.of(9,0,0);
         this.clockIn = now;
@@ -80,7 +80,7 @@ public class Attendance extends BaseTimeEntity {
 
     public void clockOut(LocalDateTime now) {
         if(!isClockedIn()) {
-            throw new BusinessException(ErrorCode.NOT_CLOCKED_IN);  //! REQ-NF-G-004: Exception handler 생성 필요
+            throw new BusinessException(ErrorCode.NOT_CLOCKED_IN);  //! REQ-NF-G-004 개선: GlobalExceptionHandler에서 처리
         }
         LocalTime CLOCK_OUT_CRITERIA = LocalTime.of(18,0,0);
         this.clockOut = now;
