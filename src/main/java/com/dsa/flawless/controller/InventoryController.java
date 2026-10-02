@@ -1,11 +1,14 @@
 package com.dsa.flawless.controller;
 
+import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.dto.InboundRequestDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.dto.StockHistoryRowDto;
 import com.dsa.flawless.dto.StockRowDto;
 import com.dsa.flawless.exception.InsufficientStockException;
 import com.dsa.flawless.exception.ItemNotFoundException;
+import com.dsa.flawless.domain.Item;
+import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.service.InventoryService;
 import jakarta.validation.Valid;
 import java.beans.PropertyEditorSupport;
@@ -47,6 +50,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+
+    // [출고 기능(REQ-F-M-006) 추가 시 새로 주입함]
+    // 이유: "처리한 사원"을 기록하려면 지금 로그인한 사원의 id가 필요한데, 로그인 기능이
+    //      완성되면서 EmployeeRepository로 실제 로그인한 사원을 조회할 수 있게 됐음.
+    //      그래서 출고 처리부터는 예전 입고 처리처럼 employeeId를 1로 고정하지 않고,
+    //      실제 로그인한 사원의 id를 사용함(아래 outbound() 메서드 참고).
+    private final EmployeeRepository employeeRepository;
 
     /**
      * 빈 값이면 그냥 null로 처리해서, 원래 있던 "품목을 선택해 주세요." 메시지가 뜨게 함.
@@ -199,7 +209,10 @@ public class InventoryController {
         }
 
         // 현재 로그인한 사용자의 username(authentication.getName())으로 실제 사원을 조회해서 사용함.
-        Long employeeId = inventoryService.getEmployeeIdByUsername(authentication.getName());
+        Employee employee = employeeRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new IllegalStateException(
+                        "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + authentication.getName()));
+        Long employeeId = employee.getId();
 
         //! [REQ-NF-I-002] 해결 완료(2026-09-17): SecurityConfig에서 POST /inventory/outbound를
         //! hasRole("ADMIN_IV")로 제한해서, 여기 도달하는 시점엔 이미 물류관리자로 확인된 상태임
@@ -287,7 +300,7 @@ public class InventoryController {
      */
     @GetMapping("/{id}/history")
     public String history(@PathVariable Long id, Model model) {
-        StockRowDto item = inventoryService.getStockRowOrThrow(id);
+        Item item = inventoryService.getItemOrThrow(id);
         List<StockHistoryRowDto> histories = inventoryService.getItemStockHistories(id);
 
         model.addAttribute("item", item);

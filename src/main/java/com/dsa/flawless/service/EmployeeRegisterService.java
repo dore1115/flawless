@@ -4,7 +4,6 @@ import com.dsa.flawless.domain.Department;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Position;
 import com.dsa.flawless.domain.Role;
-import com.dsa.flawless.dto.EmployeeRegisterForm;
 import com.dsa.flawless.repository.EmployeeRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +14,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class EmployeeRegisterService {
-
+	
 	private final EmployeeRepository employeeRepository;
-
+	
 	private final EntityManager em;
 	
 	// REQ-NF-L-001 개선: 비밀번호를 BCrypt 해시로 저장하기 위해 사용
@@ -30,7 +29,7 @@ public class EmployeeRegisterService {
 		if (employeeRepository.findByUsername(username).isPresent()) {
 			throw new IllegalStateException("이미 사용 중인 아이디입니다.");
 		}
-		if (employeeRepository.existsByEmail(form.getEmail())) {
+		if (employeeRepository.existsByEmail(email)) {
 			throw new IllegalStateException("이미 사용 중인 이메일입니다.");
 		}
 		
@@ -59,8 +58,8 @@ public class EmployeeRegisterService {
 				.position(position)
 				.role(roleValue)
 				.build();
-
-		employeeRepository.save(employee);
+		
+		return employeeRepository.save(employee);
 	}
 	
 }

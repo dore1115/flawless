@@ -10,8 +10,8 @@
   ※ 입력값 검증 실패(이름/이메일/연락처/주소 공백, 유효하지 않은 직책·부서) 시 화면 상세 설계 공통 정책상
     "폼 화면 유지 + 필드 오류 표시"가 목표이나, REQ-NF-G-004(예외처리 표준 부재)가 아직 미적용이라
     현재는 400 오류 페이지로 이동한다. GlobalExceptionHandler 도입 시 함께 개선 예정.
-  Model 속성: employeeId(Long), assignmentForm(EmployeeAssignmentForm),
-              positionOptions(List<PositionRowDto>), departmentOptions(List<DepartmentRowDto>), message(String, flash)
+  Model 속성: employee(Employee), assignmentForm(EmployeeAssignmentForm),
+              positionOptions(List<Position>), departmentOptions(List<Department>), message(String, flash)
 -->
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
@@ -41,7 +41,7 @@
     </div>
 
     <div class="bg-white shadow-sm border border-slate-200 p-8">
-        <form th:action="@{'/hr/employees/' + ${employeeId} + '/assignment'}"
+        <form th:action="@{'/hr/employees/' + ${employee.id} + '/assignment'}"
               th:object="${assignmentForm}" method="post" class="space-y-6" id="assignmentForm">
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -37,10 +37,11 @@ public class SecurityConfig {
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/login", "/js/**").permitAll() // 로그인 화면·정적 리소스만 예외
-						.anyRequest().authenticated() //! REQ-NF-G-003 해결: 로그인 필수로 전환
-						//! [REQ-NF-I-002] 물류관리자(ADMIN_IV) 전용으로 제한: 품목 등록/수정/삭제 + 입고/출고.
 						.requestMatchers(HttpMethod.POST, "/inventory", "/inventory/*/delete").hasRole("ADMIN_IV")
 						.requestMatchers(HttpMethod.POST, "/inventory/*").hasRole("ADMIN_IV")
+						.anyRequest().authenticated() //! REQ-NF-G-003 해결: 로그인 필수로 전환
+						//! [REQ-NF-I-002] 물류관리자(ADMIN_IV) 전용으로 제한: 품목 등록/수정/삭제 + 입고/출고.
+
 				)
 				.formLogin(form -> form
 						.loginPage("/login")

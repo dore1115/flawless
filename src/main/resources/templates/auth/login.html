@@ -41,11 +41,14 @@
             <span class="flex-none w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">!</span>
             <p class="text-sm font-medium text-red-600" th:text="${errorMessage}">아이디 또는 비밀번호가 올바르지 않습니다.</p>
         </div>
-        <form th:action="@{/login}" method="post" class="space-y-5" th:object="${loginForm}" novalidate>
+        <!-- Employee Entity 노출 -->
+        <form th:action="@{/login}" method="post" class="space-y-5" th:object="${employee}" novalidate>
+            <!-- th:object="${loginForm}" --->
 
             <!-- 아이디: 4~30자 영문/숫자. 실패 시 아이디 값만 재표시, 비밀번호는 유지하지 않음 -->
             <div>
                 <label for="username" class="block text-sm font-semibold text-slate-700 mb-2">아이디 </label>
+                <!-- th:field="*{username}" -->
                 <input type="text" id="username" name="username" th:field="*{username}"
                        class="w-full h-11 px-4 border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
                        placeholder="4~30자 영문, 숫자" autocomplete="username">
@@ -55,7 +58,7 @@
             <!-- 비밀번호: 8자 이상 -->
             <div>
                 <label for="password" class="block text-sm font-semibold text-slate-700 mb-2">비밀번호 </label>
-                <input type="password" id="password" name="password" th:field="*{password}"
+                <input type="password" id="password" name="password"
                        class="w-full h-11 px-4 border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
                        placeholder="8자 이상" autocomplete="current-password">
                 <p th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="text-xs text-red-600 mt-1">비밀번호를 입력해 주세요.</p>

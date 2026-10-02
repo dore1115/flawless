@@ -6,7 +6,6 @@ import com.dsa.flawless.dto.OutboundHistoryDto;
 import com.dsa.flawless.dto.OutboundItemOptionDto;
 import com.dsa.flawless.dto.OutboundRequestDto;
 import com.dsa.flawless.dto.StockHistoryRowDto;
-import com.dsa.flawless.dto.StockRowDto;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.domain.Item;
 import com.dsa.flawless.domain.MoveType;
@@ -283,22 +282,9 @@ public class InventoryService {
      * findByIdAndDeletedFalse가 아닌 findById를 씀.
      */
     @Transactional(readOnly = true)
-    public StockRowDto getStockRowOrThrow(Long itemId) {
-        Item item = itemRepository.findById(itemId)
+    public Item getItemOrThrow(Long itemId) {
+        return itemRepository.findById(itemId)
                 .orElseThrow(() -> new ItemNotFoundException("대상 품목이 없습니다. itemId=" + itemId));
-        return new StockRowDto(item);
-    }
-
-    /**
-     * 재고 출고 처리(outbound())에서 "처리한 사원"의 id를 로그인 username으로 조회하기 위해 사용.
-     * 컨트롤러가 EmployeeRepository를 직접 호출하지 않도록 서비스 계층에 둔다.
-     */
-    @Transactional(readOnly = true)
-    public Long getEmployeeIdByUsername(String username) {
-        return employeeRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalStateException(
-                        "로그인 정보에 해당하는 사원을 찾을 수 없습니다. username=" + username))
-                .getId();
     }
 
     /**

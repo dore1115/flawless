@@ -8,7 +8,6 @@ import com.dsa.flawless.repository.EmployeeRepository;
 import com.dsa.flawless.repository.PositionHistoryRepository;
 import com.dsa.flawless.repository.PositionRepository;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -66,10 +65,8 @@ public class PositionService {
      * 더 이상 목록에 나타나지 않도록 {@code findAll()} 대신 {@code findByActiveTrue()}로 조회한다 —
      * 신설한(사용 중인) 직책만 보이고, 삭제하면 목록에서 바로 사라진다.
      */
-    public List<PositionRowDto> findAll() {
-        return positionRepository.findByActiveTrue().stream()
-                .map(PositionRowDto::new)
-                .collect(Collectors.toList());
+    public List<Position> findAll() {
+        return positionRepository.findByActiveTrue();
     }
 
     @Transactional
