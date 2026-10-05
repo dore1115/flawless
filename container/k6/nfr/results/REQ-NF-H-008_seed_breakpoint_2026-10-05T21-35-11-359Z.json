@@ -1,0 +1,194 @@
+{
+  "req": "REQ-NF-H-008",
+  "describe": "직책/부서 코드 기준 소속 사원 조회",
+  "label": "seed",
+  "profile": "breakpoint",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-10-05T21:35:11.358Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "avg": 62.4,
+    "p50": 1,
+    "p90": 1.6,
+    "p95": 3.9,
+    "p99": 1906.8,
+    "max": 5192.1,
+    "requests": 278014,
+    "rps": 449.8,
+    "errorRatePct": 0,
+    "droppedIterations": 21626
+  },
+  "byName": {
+    "POST /hr/positions/{id}/delete (blocked)": {
+      "avg": 62.1,
+      "p50": 1,
+      "p90": 1.6,
+      "p95": 3.9,
+      "p99": 1904.5,
+      "max": 5192.1,
+      "errorRatePct": 0
+    },
+    "POST /hr/departments/{id}/delete (blocked)": {
+      "avg": 62.6,
+      "p50": 1,
+      "p90": 1.7,
+      "p95": 3.8,
+      "p99": 1909.7,
+      "max": 4585.4,
+      "errorRatePct": 0
+    }
+  },
+  "steps": [
+    {
+      "stage": "h01",
+      "targetRps": 100,
+      "achievedRps": 100,
+      "errorRatePct": 0,
+      "avg": 2.3,
+      "p50": 2.5,
+      "p90": 3.8,
+      "p95": 3.9,
+      "p99": 4.4,
+      "max": 26.2,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h02",
+      "targetRps": 200,
+      "achievedRps": 200,
+      "errorRatePct": 0,
+      "avg": 1.4,
+      "p50": 1,
+      "p90": 2.9,
+      "p95": 3.4,
+      "p99": 3.8,
+      "max": 20.6,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h03",
+      "targetRps": 300,
+      "achievedRps": 300,
+      "errorRatePct": 0,
+      "avg": 1.2,
+      "p50": 1,
+      "p90": 1.5,
+      "p95": 2,
+      "p99": 3.5,
+      "max": 20.8,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h04",
+      "targetRps": 400,
+      "achievedRps": 400,
+      "errorRatePct": 0,
+      "avg": 1,
+      "p50": 0.9,
+      "p90": 1.1,
+      "p95": 1.2,
+      "p99": 2,
+      "max": 19.2,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h05",
+      "targetRps": 500,
+      "achievedRps": 500,
+      "errorRatePct": 0,
+      "avg": 1,
+      "p50": 1,
+      "p90": 1.1,
+      "p95": 1.1,
+      "p99": 1.8,
+      "max": 7.6,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h06",
+      "targetRps": 600,
+      "achievedRps": 599.1,
+      "errorRatePct": 0,
+      "avg": 2.5,
+      "p50": 1,
+      "p90": 1.2,
+      "p95": 1.4,
+      "p99": 62.1,
+      "max": 297.7,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h07",
+      "targetRps": 700,
+      "achievedRps": 700,
+      "errorRatePct": 0,
+      "avg": 1.1,
+      "p50": 1,
+      "p90": 1.1,
+      "p95": 1.2,
+      "p99": 2.7,
+      "max": 10.8,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h08",
+      "targetRps": 800,
+      "achievedRps": 800,
+      "errorRatePct": 0,
+      "avg": 1.1,
+      "p50": 1.1,
+      "p90": 1.2,
+      "p95": 1.3,
+      "p99": 2.8,
+      "max": 14.1,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h09",
+      "targetRps": 900,
+      "achievedRps": 351.4,
+      "errorRatePct": 0,
+      "avg": 806.7,
+      "p50": 408.4,
+      "p90": 2078.4,
+      "p95": 2386.5,
+      "p99": 3081,
+      "max": 5192.1,
+      "broken": true,
+      "reasons": [
+        "p99 3081ms ≥ 3000ms",
+        "처리량 351.4/900 req/s (포화)"
+      ]
+    }
+  ],
+  "breakpoint": {
+    "stage": "h09",
+    "targetRps": 900,
+    "reasons": [
+      "p99 3081ms ≥ 3000ms",
+      "처리량 351.4/900 req/s (포화)"
+    ],
+    "lastStableRps": 800,
+    "lastStableP99": 2.8
+  },
+  "custom": {},
+  "checks": {
+      "302 → 목록": {
+        "passes": 278014,
+        "fails": 0
+      }
+    }
+}
