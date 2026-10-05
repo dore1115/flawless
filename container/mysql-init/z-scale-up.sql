@@ -33,10 +33,10 @@ JOIN (SELECT 1 y UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) k
 WHERE a.work_date < DATE_ADD(@s, INTERVAL 1 YEAR);
 
 -- [3] (선택) REQ-NF-H-008: 사원 50,000명 추가 — 인덱스 유무 차이가 보이려면 행 수가 커야 함
---     로그인용이 아니므로 비밀번호는 시드와 동일 평문. 필요할 때만 주석 해제.
+--     비밀번호는 시드와 동일한 BCrypt 해시(평문 password123!). 필요할 때만 주석 해제.
 -- INSERT INTO employee (username, password, name, email, address, phone, department_id, position_id, role)
 -- WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 50000)
--- SELECT CONCAT('load', LPAD(n, 6, '0')), 'password123!', CONCAT('부하', n), CONCAT('load', n, '@k6.test'),
+-- SELECT CONCAT('load', LPAD(n, 6, '0')), '$2a$10$Bx7oE4nj.iFBYhYtxvaOMOyOSAbJatllleTJjEjZwfuguQfCybayS', CONCAT('부하', n), CONCAT('load', n, '@k6.test'),
 --        '부산광역시', '010-0000-0000', 1 + (n % 6), 1 + (n % 6), 'EMPLOYEE'
 -- FROM seq;
 

@@ -14,18 +14,18 @@ import exec from "k6/execution";
 export const BASE_URL = (__ENV.BASE_URL || "http://localhost:8080").replace(/\/+$/, "");
 export const PASSWORD = __ENV.TEST_PASS || "password123!";
 
-// seed_data.sql 기준 계정 (emp001~003 ADMIN_HR / emp004~006 ADMIN_IV / emp007~100 EMPLOYEE)
+// seed_data.sql 기준 계정 (emp001~020 ADMIN_HR / emp021~040 ADMIN_IV / emp041~100 EMPLOYEE)
 export const USERS = {
   hr: __ENV.HR_USER || "emp001",
-  iv: __ENV.IV_USER || "emp004",
-  emp: __ENV.EMP_USER || "emp007",
+  iv: __ENV.IV_USER || "emp021",
+  emp: __ENV.EMP_USER || "emp041",
 };
 
 export const loginFailures = new Counter("nfr_login_failures");
 
 /** EMPLOYEE 계정 풀에서 n번째 계정 (VU마다 다른 사원으로 조회하도록) */
 export function employeeUserFor(n) {
-  const first = Number(__ENV.EMP_FIRST || 7);
+  const first = Number(__ENV.EMP_FIRST || 41);
   const last = Number(__ENV.EMP_LAST || 100);
   const idx = first + (Math.abs(n) % (last - first + 1));
   return "emp" + String(idx).padStart(3, "0");
@@ -150,7 +150,7 @@ export function clearCookies(jar = http.cookieJar()) {
 }
 
 // ── setup()에서 로그인한 세션을 VU들이 나눠 쓴다 ─────────────────────
-// 관리자 계정이 3개뿐이라 관리자 전용 기능은 setup에서 만든 세션으로 부하를 건다.
+// 관리자 전용 기능은 setup에서 만든 세션으로 부하를 건다.
 // count > 1 이면 같은 계정으로 세션을 여러 개 만들어 VU에 나눠준다.
 //   → 세션 1개를 수백 VU가 공유하면 Spring의 세션 mutex(flash map 저장 등)에서 요청이 줄을 서서,
 //     실제 사용 환경에 없는 병목이 생긴다.
@@ -167,6 +167,29 @@ export function sharedLogin(username, csrfPage = "/login", count = 1) {
     sessions.push({ sid: sid[0], csrf: csrfFrom(page.body) });
   }
   if (count > 1) console.log(`[setup] ${username} 세션 ${count}개 생성`);
+  return { sid: sessions[0].sid, csrf: sessions[0].csrf, sessions };
+}
+
+// ── 같은 역할의 서로 다른 계정 count개로 하나씩 로그인해 세션을 만든다 ──────
+// max-sessions=1(REQ-NF-S-001)이라 sharedLogin처럼 한 계정으로 여러 번 로그인하면 이전 세션이 만료된다.
+// firstUser부터 번호를 올려가며 로그인한다. 예) multiLogin("emp001", ..., 20) → emp001~emp020 (ADMIN_HR)
+// 반환 형태는 sharedLogin과 같아서 useSharedSession(data)로 VU에 나눠준다.
+export function multiLogin(firstUser, csrfPage = "/login", count = 1) {
+  const m = firstUser.match(/^(.*?)(\d+)$/);
+  if (!m) throw new Error(`[setup] 계정 번호를 알 수 없습니다: ${firstUser}`);
+  const [, prefix, num] = m;
+  const sessions = [];
+  for (let i = 0; i < count; i++) {
+    const username = prefix + String(Number(num) + i).padStart(num.length, "0");
+    clearCookies();
+    const r = login(username);
+    if (!r.ok) throw new Error(`[setup] ${username} 로그인 실패(${i + 1}/${count}): ${describeLoginFailure(r.res)}`);
+    const sid = http.cookieJar().cookiesForURL(BASE_URL)["JSESSIONID"];
+    if (!sid || !sid.length) throw new Error(`[setup] ${username} JSESSIONID 쿠키를 받지 못했습니다.`);
+    const page = http.get(`${BASE_URL}${csrfPage}`, aux(`GET ${csrfPage}`));
+    sessions.push({ sid: sid[0], csrf: csrfFrom(page.body) });
+  }
+  console.log(`[setup] ${firstUser}부터 계정 ${count}개로 세션 ${count}개 생성`);
   return { sid: sessions[0].sid, csrf: sessions[0].csrf, sessions };
 }
 

@@ -25,6 +25,7 @@ CREATE TABLE department (
     is_active       TINYINT(1)   NOT NULL DEFAULT 1       COMMENT '사용 가능 여부. 삭제 대신 0으로 전환(soft delete)',
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시(갱신 시 자동 반영)',
+    version         INT          NOT NULL DEFAULT 0       COMMENT '낙관적 락 버전(JPA @Version)',
     PRIMARY KEY (id),
     KEY idx_department_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='부서 마스터';
@@ -39,6 +40,7 @@ CREATE TABLE position (
     is_active     TINYINT(1)  NOT NULL DEFAULT 1       COMMENT '사용 가능 여부. 삭제 대신 0으로 전환(soft delete)',
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
     updated_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시(갱신 시 자동 반영)',
+    version       INT         NOT NULL DEFAULT 0       COMMENT '낙관적 락 버전(JPA @Version)',
     PRIMARY KEY (id),
     KEY idx_position_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='직책 마스터';
@@ -70,6 +72,7 @@ CREATE TABLE employee (
     role          VARCHAR(20)  NOT NULL DEFAULT 'EMPLOYEE' COMMENT 'ADMIN_HR/ADMIN_IV/EMPLOYEE 중 하나',
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
     updated_at    DATETIME     NULL                    COMMENT '수정일시(공통 컬럼)',
+    version       INT          NOT NULL DEFAULT 0       COMMENT '낙관적 락 버전(JPA @Version, REQ-NF-H-009)',
     PRIMARY KEY (id),
     UNIQUE KEY uq_employee_username (username),
     UNIQUE KEY uq_employee_email (email),
