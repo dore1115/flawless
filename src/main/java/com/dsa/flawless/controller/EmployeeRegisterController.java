@@ -5,19 +5,23 @@ import com.dsa.flawless.domain.Role;
 import com.dsa.flawless.service.EmployeeRegisterService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 
 // REQ-F-S-004 사원 계정 등록. ROLE_ADMIN_HR만 접근 가능.
 // ⚠️ Employee가 Builder 전용(setter 없음)이라 자동 바인딩이 안 되고,
 //    DTO도 의도적으로 안 쓰기로 했으므로 개별 @RequestParam으로 값을 받습니다.
 
-// TODO(REQ-NF-M-001 권한 상승 방지 부재): 아래 @PreAuthorize는 SecurityConfig에
-// @EnableMethodSecurity가 없어서 현재 무시된다 -> 이 컨트롤러는 사실상 로그인만 하면
-// 누구나 접근 가능한 상태다. SecurityConfig.java의 TODO 참고해서 함께 고칠 것.
+// REQ-NF-M-001 개선: 아래 @PreAuthorize는 SecurityConfig에 @EnableMethodSecurity가 없어서 현재 무시된다.
+// @EnableMethodSecurity를 켜면 다른 기능(REQ-NF-H-004/H-005)의 결함까지 함께 바뀌므로,
+// 이 컨트롤러 안에서 checkAdminHr()로 직접 권한을 검사한다. (@PreAuthorize는 추후 전역 인가 적용 대비로 유지)
 @Controller
 @RequestMapping("/admin/members")
 @RequiredArgsConstructor
@@ -26,9 +30,20 @@ public class EmployeeRegisterController {
 	
 	private final EmployeeRegisterService employeeRegisterService;
 	
+	// REQ-NF-M-001: 로그인한 사용자가 인사관리자(ROLE_ADMIN_HR)인지 서버에서 직접 확인
+	private void checkAdminHr() {
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		boolean isAdminHr = auth != null && auth.getAuthorities().stream()
+				.anyMatch(a -> "ROLE_ADMIN_HR".equals(a.getAuthority()));
+		if (!isAdminHr) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "인사관리자만 접근할 수 있습니다.");
+		}
+	}
+	
 	// GET /admin/members/register : 사원등록 폼
 	@GetMapping("/register")
 	public String registerForm(Model model) {
+		checkAdminHr();
 		model.addAttribute("roleOptions", Role.values());
 		return "register/register";
 	}
@@ -46,6 +61,7 @@ public class EmployeeRegisterController {
 	                       @RequestParam String role,
 	                       Model model,
 	                       HttpSession session) {
+		checkAdminHr();
 		try {
 			Employee saved = employeeRegisterService.registerEmployee(
 					username, password, name, email, phone, address, departmentId, positionId, role);
@@ -58,7 +74,7 @@ public class EmployeeRegisterController {
 		} catch (IllegalStateException e) {
 			// DTO가 없어서 실패 시 입력값 재표시는 하지 않습니다 (관리자가 다시 입력)
 			model.addAttribute("roleOptions", Role.values());
-			model.addAttribute("errorMessage", e.getMessage()); // 아이디/이메일 중복
+			model.addAttribute("errorMessage", e.getMessage()); // 아이디/이메일 중복, 잘못된 권한값
 			return "register/register";
 		}
 	}
@@ -66,6 +82,7 @@ public class EmployeeRegisterController {
 	// GET /admin/members/complete : AU-002b 임시 비밀번호 1회 노출 화면
 	@GetMapping("/complete")
 	public String complete(Model model, HttpSession session) {
+		checkAdminHr();
 		Object loginId = session.getAttribute("justRegisteredLoginId");
 		Object tempPassword = session.getAttribute("justRegisteredTempPassword");
 		

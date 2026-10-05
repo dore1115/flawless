@@ -23,7 +23,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -174,10 +176,14 @@ public class InventoryService {
                         "등록되지 않았거나 비활성화된 품목입니다. itemId=" + request.getItemId()));
 
         // 2) 현재 재고 수량 확인. 재고 기록 자체가 없으면 0개로 취급함(위 처리 순서 설명 참고).
-        //! [REQ-NF-I-005] 아래 "조회(findByItemId) → 비교 → 차감(decrease) → 저장" 구간은 락이 없어서
-        //! 동시 요청에 안전하지 않음 - 이 메서드 전체가 그 결함의 실제 발생 지점임. 증상과 해결 방법
-        //! (낙관적/비관적 락)은 Stock.java의 주석 처리된 @Version 필드 위 주석에 자세히 적어둠.
-        Stock stock = stockRepository.findByItemId(item.getId()).orElse(null);
+        //! [REQ-NF-I-005] 해결: "조회 → 비교 → 차감(decrease) → 저장" 네 단계 사이에 락이 없어
+        //! 동시 요청 시 Lost Update가 발생하던 결함(증상과 방법 선택 이유는 Stock.java 및
+        //! StockRepository.findByItemIdForUpdate() 주석 참고)을 비관적 락으로 해결함.
+        //! findByItemId() 대신 findByItemIdForUpdate()를 써서, 이 트랜잭션이 해당 재고 행을 조회하는
+        //! 시점에 DB가 SELECT ... FOR UPDATE로 행을 잠그도록 함 - 트랜잭션이 커밋/롤백될 때까지 다른
+        //! 출고 트랜잭션은 같은 행에 대한 잠금을 기다려야 하므로, 두 트랜잭션이 같은 "차감 전" 수량을
+        //! 동시에 읽어 서로의 갱신을 덮어쓰는 상황 자체가 차단됨.
+        Stock stock = stockRepository.findByItemIdForUpdate(item.getId()).orElse(null);
         int currentQuantity = (stock != null) ? stock.getQuantity() : 0;
 
         // 3) 재고 부족 검사 - 요청 수량이 현재 재고보다 많으면 처리하지 않고 예외를 던져 중단.
@@ -212,47 +218,53 @@ public class InventoryService {
      * findAllByDeletedFalse 계열 쿼리를 씀.
      *
      */
-    //! [REQ-NF-I-004] 페이지네이션 부재 결함: 요청한 페이지 크기만큼만 DB에서 가져오는 대신, 조건에
-    //! 맞는 전체 품목을 여기서 한 번에 다 가져옴 - 실제 페이지 자르기는 InventoryController.list()가
-    //! 이 결과를 받아 자바 메모리 상에서 subList()로 처리함(의도적으로 남겨둔 성능 결함). 데이터가
-    //! 많아지면 페이지를 몇 번째로 요청하든 매번 전체 데이터를 읽어옴.
-    //! 해결 방법: ItemController.list()처럼 Pageable을 받는 findAllByDeletedFalse(Pageable)/findAllByDeletedFalseAnd
-    //! NameContaining(...)에 Pageable을 추가해 DB가 LIMIT/OFFSET을 처리하도록 바꿈.
+    //! [REQ-NF-I-004] 해결 완료(2026-09-21): 요청한 페이지 크기만큼만 DB에서 가져오는 대신 조건에
+    //! 맞는 전체 품목을 여기서 한 번에 다 가져와 InventoryController.list()가 자바 메모리 상
+    //! subList()로 페이지를 잘라 쓰던 결함(페이지네이션 부재)을 고침. ItemController.list()와
+    //! 같은 패턴으로, 이 메서드가 Pageable을 그대로 받아 리포지토리에 넘기고 Page<Item>을 돌려주도록
+    //! 바꿔서 DB가 LIMIT/OFFSET을 처리하게 함(ItemRepository.findAllByDeletedFalseAndNameContaining
+    //! (String, Pageable) 참고). 정렬(createdAt 오름차순)은 예전처럼 메서드 이름에 고정하는 대신
+    //! 호출 측(InventoryController.list())이 Pageable에 Sort로 담아 넘김 - 품목 관리(IV-001)와
+    //! 정렬 순서를 맞춰야 페이지별로 보이는 품목이 서로 어긋나지 않는다는 원래 의도는 그대로 유지됨.
 
     @Transactional(readOnly = true)
-    public List<Item> getFilteredActiveItems(String name) {
-        // [버그 수정] 품목 관리(IV-001, createdAt 오름차순)와 정렬 순서가 달라 페이지별로 보이는
-        // 품목이 서로 어긋나던 문제 - 정렬을 보장하는 findAllByDeletedFalseOrderByCreatedAtAsc()/
-        // findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc()로 교체함(ItemRepository 참고).
+    public Page<Item> getFilteredActiveItems(String name, Pageable pageable) {
         if (name == null || name.isBlank()) {
-            return itemRepository.findAllByDeletedFalseOrderByCreatedAtAsc();
+            return itemRepository.findAllByDeletedFalse(pageable);
         }
-        return itemRepository.findAllByDeletedFalseAndNameContainingOrderByCreatedAtAsc(name.trim());
+        return itemRepository.findAllByDeletedFalseAndNameContaining(name.trim(), pageable);
     }
 
     /**
      * 위 getFilteredActiveItems()가 돌려준 품목들의 "현재 재고 수량"을 품목 id 기준으로 모아 담음.
      *
      */
-    //! [REQ-NF-I-001] 재고 조회 화면은 Item 엔티티를 변환 없이 그대로 Model에 담아 화면에 넘김
-    //! (다른 화면들은 ItemRowDto/OutboundItemOptionDto 등으로 변환해서 넘기는 것과 다름 - 의도적으로
-    //! 남겨둔 결함). 화면 표시에 필요 없는 등록/수정일시, deleted 플래그 등 내부 필드까지 템플릿에서
-    //! 그대로 접근 가능한 상태임. 해결 방법: 품목명/현재 수량만 담는 별도 응답 DTO(예: StockRowDto)를
-    //! 만들어 InventoryController.list()가 Item 대신 그 DTO 목록을 Model에 담도록 바꿈.
+    //! [REQ-NF-I-001] 해결 완료(2026-09-21): InventoryController.list()가 이 메서드의 결과(Map)를
+    //! 받아 StockRowDto로 변환해서 Model에 담도록 고쳐짐(dto/StockRowDto.java 참고). 이 메서드
+    //! 자체는 Map<Long,Integer>만 돌려주고 있었어서(Item 엔티티를 직접 넘기는 건 컨트롤러 쪽 문제였음)
+    //! 그대로 둠.
     //!
-    //! [REQ-NF-I-003] 아래 for문이 품목 하나하나마다 stockRepository.findByItemId()를 개별
-    //! 호출하는 N+1 쿼리임 - ItemService.getDashboardSummary(), InventoryService.
-    //! getActiveItemOptionsWithStock()와 동일한 패턴의 결함을 재고 조회 화면에도 그대로 남겨둠.
-    //! 해결 방법: 품목 id 목록을 한 번에 IN 절로 조회하는 배치 쿼리로 교체.
+    //! [REQ-NF-I-003] 해결 완료(2026-09-21): 품목 하나하나마다 stockRepository.findByItemId()를
+    //! 개별 호출하던 N+1 쿼리를 StockRepository.findByItemIdIn()으로 교체해서 재고 행을 한 번의
+    //! IN 절 쿼리로 모두 가져오도록 고침. 재고 기록이 아직 없는 품목(첫 입고 전)은 조회 결과에
+    //! 안 나오므로 getOrDefault(...,0)으로 0개 처리함(기존 동작과 동일).
+    //! ItemService.getDashboardSummary(), InventoryService.getActiveItemOptionsWithStock()에는
+    //! 여전히 같은 패턴의 N+1이 남아있음 - 이번 수정 범위(재고 조회 화면)가 아니라 그대로 둠.
 
     @Transactional(readOnly = true)
     public Map<Long, Integer> getCurrentQuantities(List<Item> items) {
+        List<Long> itemIds = items.stream()
+                .map(Item::getId)
+                .collect(Collectors.toList());
+
+        // 재고 행이 있는 품목만 한 번의 쿼리로 가져와서 품목 id → 수량 맵으로 만듦.
+        Map<Long, Integer> foundQuantities = stockRepository.findByItemIdIn(itemIds).stream()
+                .collect(Collectors.toMap(stock -> stock.getItem().getId(), Stock::getQuantity));
+
+        // 요청받은 품목 순서를 그대로 유지하면서, 재고 행이 없는 품목(첫 입고 전)은 0개로 채움.
         Map<Long, Integer> quantities = new LinkedHashMap<>();
         for (Item item : items) {
-            int currentQuantity = stockRepository.findByItemId(item.getId())
-                    .map(Stock::getQuantity)
-                    .orElse(0);
-            quantities.put(item.getId(), currentQuantity);
+            quantities.put(item.getId(), foundQuantities.getOrDefault(item.getId(), 0));
         }
         return quantities;
     }

@@ -29,11 +29,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * 삭제(REQ-F-C-008)는 화면설계서 Controller 표에 행 자체가 없어(등록/수정만 기재됨) 부서/직책
  * 삭제와 같은 "POST /{id}/delete" 규칙을 그대로 따라 새로 정의함.
  */
-//! [REQ-NF-I-002] 품목 등록/수정/삭제는 화면설계서상 "물류관리자" 전용인데 인가 검증이 없음
-//! - 로그인만 되어 있으면 아무 사원이나 처리 가능. 해결 방법 요약: (1) 로그인 사원의
-//! Role을 조회해 물류관리자가 아니면 거부, 또는 (2) REQ-NF-G-003(전역 인가) 해결 후 SecurityConfig에서
-//! 이 경로를 hasRole("LOGISTICS_MANAGER")로 제한. 자세한 설명은 InventoryController.inbound()의
-//! employeeId 선언부 주석 참고(같은 결함, 같은 해결 방법).
+//! [REQ-NF-I-002] 품목 등록/수정/삭제는 화면설계서상 "물류관리자" 전용인데 인가 검증이 없었음
+//! - 해결 완료(2026-09-17): SecurityConfig.securityFilterChain()에서 POST /inventory,
+//! POST /inventory/*, POST /inventory/*/delete를 hasRole("ADMIN_IV")로 제한함
+//! (역할명 ADMIN_IV는 Role.java 기준 확정, 이전 주석의 "LOGISTICS_MANAGER"는 가칭이었음).
+//! 자세한 설명은 InventoryController.inbound()의 employeeId 선언부 주석 참고
+//! (입고/출고도 같은 규칙으로 함께 제한함).
 @Controller
 @RequestMapping("/inventory")
 @RequiredArgsConstructor
