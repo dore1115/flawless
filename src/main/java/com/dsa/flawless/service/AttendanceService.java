@@ -1,6 +1,7 @@
 package com.dsa.flawless.service;
 
 import com.dsa.flawless.domain.Attendance;
+import com.dsa.flawless.dto.AttendanceDto;
 import com.dsa.flawless.exception.BusinessException;
 import com.dsa.flawless.exception.ErrorCode;
 import com.dsa.flawless.repository.AttendanceRepository;
@@ -63,16 +64,16 @@ public class AttendanceService {
     }
     // 조회 처리
     //! 전체 조회 후 원하는 조건에 맞는 데이터를 조회하기 때문에 성능 저하를 유발할 가능성이 있다.
-    public List<Attendance> getList(String employeeUsername, Integer year, Integer month) {
+    public List<AttendanceDto> getList(String employeeUsername, Integer year, Integer month) {
         List<Attendance> attendances = attendanceRepository.findAllByEmployeeUsername(employeeUsername);
-        List<Attendance> monthlyAttendance = new ArrayList<>();
+        List<AttendanceDto> monthlyAttendance = new ArrayList<>();
 
         LocalDate now = LocalDate.now(clock);
         int targetYear = year == null ? now.getYear() : year;
         int targetMonth = month == null ? now.getMonthValue() : month;
         for (Attendance attendance : attendances) {
             if (attendance.getWorkDate().getYear() == targetYear && attendance.getWorkDate().getMonthValue() == targetMonth ) {
-                monthlyAttendance.add(attendance);
+                monthlyAttendance.add(new AttendanceDto(attendance.getWorkDate(), attendance.getClockIn(), attendance.getClockOut()));
             }
         }
 
