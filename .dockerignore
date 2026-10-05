@@ -12,3 +12,6 @@ container/grafana
 container/prometheus
 container/mysql-init
 container/k6
+
+# 로컬 전용 설정(로컬 DB 계정·keystore 경로). 이미지에는 application-docker.yaml만 쓴다.
+src/main/resources/application-local.yaml

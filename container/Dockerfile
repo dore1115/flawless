@@ -8,7 +8,7 @@ COPY build.gradle settings.gradle ./
 RUN ./gradlew dependencies --no-daemon > /dev/null 2>&1 || true
 
 COPY src ./src
-RUN ./gradlew bootJar --no-daemon -x test
+RUN ./gradlew build --no-daemon
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app

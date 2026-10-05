@@ -11,6 +11,8 @@ services:
     restart: on-failure
     ports:
       - "8080:8080"
+    volumes:
+      - ./certs/keystore.p12:/certs/keystore.p12:ro
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: ${DB_URL}
@@ -18,6 +20,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
       TZ: Asia/Seoul
+      # SSL을 위한 .p12파일 암호는 .env에 보관
+      SSL_PASSWORD: ${SSL_PASSWORD}
+      SSL_KEY_STORE_PATH: file:/certs/keystore.p12
     depends_on:
       mysql:
         condition: service_healthy
