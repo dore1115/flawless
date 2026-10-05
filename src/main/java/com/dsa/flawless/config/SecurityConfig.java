@@ -37,6 +37,7 @@ public class SecurityConfig {
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/login", "/js/**").permitAll() // 로그인 화면·정적 리소스만 예외
+						.requestMatchers("/actuator/health", "/actuator/prometheus").permitAll() // Prometheus 스크레이핑용 (9091은 호스트에 노출 안 함)
 						.requestMatchers(HttpMethod.POST, "/inventory", "/inventory/*/delete").hasRole("ADMIN_IV")
 						.requestMatchers(HttpMethod.POST, "/inventory/*").hasRole("ADMIN_IV")
 						.anyRequest().authenticated() //! REQ-NF-G-003 해결: 로그인 필수로 전환
