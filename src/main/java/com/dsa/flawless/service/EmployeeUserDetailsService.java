@@ -3,6 +3,7 @@ package com.dsa.flawless.service;
 import com.dsa.flawless.config.EmployeeUserDetails;
 import com.dsa.flawless.domain.Employee;
 import com.dsa.flawless.repository.EmployeeRepository;
+import com.dsa.flawless.util.LogMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Service;
 public class EmployeeUserDetailsService implements UserDetailsService {
 	
 	private final EmployeeRepository employeeRepository;
-	
+
 	@Override
 	public UserDetails loadUserByUsername(String username)
 			throws UsernameNotFoundException {
@@ -27,15 +28,13 @@ public class EmployeeUserDetailsService implements UserDetailsService {
 		// p95 응답시간 측정해서 개선 전/후 비교할 것.
 		Employee employee = employeeRepository.findByUsername(username)
 				.orElseThrow(() -> {
-					log.info("===== 사용자 없음 =====");
-					log.info("조회한 username = {}", username);
+					// 로그인 실패 시 아이디 칸에 비밀번호 등을 잘못 입력하는 경우가 있어 아이디도 일부만 남긴다.
+					log.info("[Login] 사용자 없음 - username={}", LogMasker.maskName(username));
 					return new UsernameNotFoundException("사용자를 찾을 수 없습니다.");
 				});
-		// REQ-NF-L-001 부가 결함 처리: 비밀번호 값을 로그에 남기던 코드를 제거함.
-		// (요청 실패 로그에도 입력 비밀번호 원문을 남기지 않는다 — REQ-F-W-005 비고와 동일한 원칙)
-		log.info("===== 사용자 찾음 =====");
-		log.info("username = {}", employee.getUsername());
-		log.info("role = {}", employee.getRole());
+		// REQ-NF-L-001 관련 부가 결함 개선: 예전엔 비밀번호 원문을 그대로 로그에 남겼다.
+		// 비밀번호는 마스킹 여부와 상관없이 아예 로그에 남기지 않는다(REQ-F-W-005 비고와 동일한 원칙).
+		log.info("[Login] 사용자 조회 - username={}, role={}", employee.getUsername(), employee.getRole());
 		
 		return new EmployeeUserDetails(employee);
 	}

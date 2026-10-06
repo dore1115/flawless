@@ -26,13 +26,13 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 //! H-005(PositionController/DepartmentController, 2026-09-22에 목록 조회까지 클래스 레벨로 확장)는
 //! 김도영 담당 범위에서 이미 적용 완료. I-002(재고 관리) 등 다른 모듈은 아직 남아 있다(담당자 확인 필요).
 public class SecurityConfig {
-	
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			// REQ-NF-S-001: 동시 로그인 허용 수를 application.yaml에서 읽음 (값이 없으면 1)
 			@Value("${app.security.max-sessions:1}") int maxSessions) throws Exception {
-		
+
 		http
 				// 페이지 접근 권한 설정
 				.authorizeHttpRequests(auth -> auth
@@ -61,17 +61,17 @@ public class SecurityConfig {
 				);
 		return http.build();
 	}
-	
+
 	@Bean
 	public PasswordEncoder passwordEncoder(
 			// REQ-NF-S-001: 비밀번호 암호화 강도를 application.yaml에서 읽음 (값이 없으면 10)
 			@Value("${app.security.bcrypt-strength:10}") int bcryptStrength) {
 		return new BCryptPasswordEncoder(bcryptStrength);
 	}
-	
+
 	@Bean
 	public HttpSessionEventPublisher httpSessionEventPublisher() {
 		return new HttpSessionEventPublisher();
 	}
-	
+
 }
