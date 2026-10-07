@@ -22,17 +22,19 @@ import java.util.StringJoiner;
 import java.util.regex.Pattern;
 
 /**
- * REQ-NF-G-004 개선: 인사정보 / 근태 / 재고관리 서비스의 조회·변경 감사 로그.
+ * REQ-NF-G-004 개선: 인사정보 / 근태 / 재고관리 서비스의 변경(등록·수정·삭제) 감사 로그.
  *
- * 대상 서비스의 public 메서드가 호출될 때마다 "누가, 어떤 업무를, 어떤 값으로, 결과가 어땠는지"를
+ * 대상 서비스의 변경 메서드가 호출될 때마다 "누가, 어떤 업무를, 어떤 값으로, 결과가 어땠는지"를
  * 한 줄로 남긴다. 각 서비스 메서드에 로그 코드를 흩어 넣지 않고 이 Aspect 한 곳에서 처리하므로,
  * 대상 서비스에 메서드가 추가돼도 자동으로 로그가 남는다.
  *
  * 로그 형식(로거 이름: AUDIT → logging.level.AUDIT 로 레벨만 따로 조절 가능):
- *   [AUDIT][재고][변경] user=kim ItemService.create(name=볼펜) - 성공 (12ms)
- *   [AUDIT][재고][변경] user=kim ItemService.create(name=볼펜) - 실패: DuplicateItemNameException (3ms)
+ *   [AUDIT][재고][등록] user=kim ItemService.create(name=볼펜) - 성공 (12ms)
+ *   [AUDIT][재고][등록] user=kim ItemService.create(name=볼펜) - 실패: DuplicateItemNameException (3ms)
  *
- * - 조회/변경 구분: @Transactional(readOnly = true)면 조회, 그 외는 변경.
+ * - 조회는 남기지 않는다: @Transactional(readOnly = true)인 메서드는 로그 없이 그대로 실행하고,
+ *   그 외는 메서드 이름으로 등록·수정·삭제를 구분해 남긴다.
+ *     create/register/add/save/inbound/outbound/clockIn → 등록, delete/remove → 삭제, 나머지 → 수정
  * - 비밀번호/개인정보는 파라미터 이름 기준으로 LogMasker로 마스킹한다.
  *     password·token 등 → ****, email → ho***@corp.com, phone → 010-****-5678,
  *     address → 서울특별시 강남구 ***, 인사 업무의 name(사원 이름) → 홍*동
@@ -55,6 +57,9 @@ public class AuditLogAspect {
     private static final String HR_DOMAIN = "인사";
     private static final String DTO_PACKAGE = "com.dsa.flawless.dto.";
     private static final int MAX_VALUE_LENGTH = 100;
+    // 입고·출고·출근은 새 이력/근태 행을 만드는 작업이라 등록으로 본다. 퇴근(clockOut)은 출근 행을 갱신하므로 수정.
+    private static final Pattern CREATE_METHOD = Pattern.compile("^(create|register|add|save|insert|inbound|outbound|clockIn).*");
+    private static final Pattern DELETE_METHOD = Pattern.compile("^(delete|remove).*");
 
     @Pointcut("within(com.dsa.flawless.service.EmployeeService)"
             + " || within(com.dsa.flawless.service.EmployeeRegisterService)"
@@ -88,7 +93,10 @@ public class AuditLogAspect {
     private Object audit(ProceedingJoinPoint joinPoint, String domain) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
-        String action = isReadOnly(method, joinPoint.getTarget().getClass()) ? "조회" : "변경";
+        if (isReadOnly(method, joinPoint.getTarget().getClass())) {
+            return joinPoint.proceed();
+        }
+        String action = actionOf(method.getName());
         String call = signature.getDeclaringType().getSimpleName() + "." + method.getName()
                 + "(" + formatArgs(domain, signature.getParameterNames(), joinPoint.getArgs()) + ")";
         String user = currentUser();
@@ -104,6 +112,16 @@ public class AuditLogAspect {
                     domain, action, user, call, e.getClass().getSimpleName(), System.currentTimeMillis() - start);
             throw e;
         }
+    }
+
+    private String actionOf(String methodName) {
+        if (CREATE_METHOD.matcher(methodName).matches()) {
+            return "등록";
+        }
+        if (DELETE_METHOD.matcher(methodName).matches()) {
+            return "삭제";
+        }
+        return "수정";
     }
 
     private boolean isReadOnly(Method method, Class<?> targetClass) {
