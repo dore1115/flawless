@@ -42,4 +42,3 @@ src/.DS_Store
 container/certs/keystore.p12
 src/main/resources/application-docker.yaml
 
-*.json

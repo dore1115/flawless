@@ -11,7 +11,7 @@ import { Counter } from "k6/metrics";
 import { sleep } from "k6";
 import exec from "k6/execution";
 
-export const BASE_URL = (__ENV.BASE_URL || "https://localhost:8080").replace(/\/+$/, "");
+export const BASE_URL = (__ENV.BASE_URL || "http://localhost:8080").replace(/\/+$/, "");
 export const PASSWORD = __ENV.TEST_PASS || "password123!";
 
 // seed_data.sql 기준 계정 (emp001~020 ADMIN_HR / emp021~040 ADMIN_IV / emp041~100 EMPLOYEE)
