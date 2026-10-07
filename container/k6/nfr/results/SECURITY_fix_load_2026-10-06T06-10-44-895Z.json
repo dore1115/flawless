@@ -1,0 +1,142 @@
+{
+  "req": "SECURITY",
+  "describe": "보안 결함 기능 검증 (✓ 개선됨 / ✗ 결함 존재)",
+  "label": "fix",
+  "profile": "functional",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-10-06T06:10:44.894Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "requests": 0,
+    "rps": 0,
+    "errorRatePct": null,
+    "droppedIterations": 0
+  },
+  "byName": {},
+  "steps": [],
+  "breakpoint": null,
+  "custom": {},
+  "checks": {
+          "REQ-NF-G-001 평문 통신 › BASE_URL이 https": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /attendance → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /hr/employees → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /hr/positions → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /hr/departments → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /inventory → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /inventory/items → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-003 / A-002 비로그인 접근 차단 › 비로그인 /inventory/outbound → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-H-004 IDOR (일반 사원 → 타 사원 정보 변경) › 일반 사원 info 조회 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-H-004 IDOR (일반 사원 → 타 사원 정보 변경) › 일반 사원 assignment 변경 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-H-005 직책/부서 삭제 인가 › 일반 사원 직책 삭제 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-H-005 직책/부서 삭제 인가 › 일반 사원 부서 삭제 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-I-002 재고/품목 관리 인가 › 일반 사원 출고 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-I-002 재고/품목 관리 인가 › 일반 사원 입고 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-I-002 재고/품목 관리 인가 › 일반 사원 품목 등록 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-I-002 재고/품목 관리 인가 › 일반 사원 품목 수정 403": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-004 예외 응답에 스택트레이스 노출 › 존재하지 않는 사원 → 5xx 아님": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-004 예외 응답에 스택트레이스 노출 › 존재하지 않는 사원 → 스택트레이스 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-G-004 예외 응답에 스택트레이스 노출 › 잘못된 파라미터 타입 → 5xx 아님": {
+            "passes": 0,
+            "fails": 1
+          },
+          "REQ-NF-G-004 예외 응답에 스택트레이스 노출 › 잘못된 파라미터 타입 → 스택트레이스 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-A-001 / H-001 / I-001 / G-002 민감 필드 노출 › /hr/employees 응답에 비밀번호/해시/프록시 필드 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-A-001 / H-001 / I-001 / G-002 민감 필드 노출 › /hr/employees/50/info 응답에 비밀번호/해시/프록시 필드 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-A-001 / H-001 / I-001 / G-002 민감 필드 노출 › /inventory/items 응답에 비밀번호/해시/프록시 필드 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-A-001 / H-001 / I-001 / G-002 민감 필드 노출 › /inventory/outbound 응답에 비밀번호/해시/프록시 필드 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-A-001 / H-001 / I-001 / G-002 민감 필드 노출 › /hr/positions 응답에 비밀번호/해시/프록시 필드 없음": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-L-002 로그인 실패 메시지로 계정 존재 여부 노출 › 존재/비존재 ID 실패 응답 상태 동일": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-L-002 로그인 실패 메시지로 계정 존재 여부 노출 › 존재/비존재 ID 실패 화면 동일": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-L-004 로그아웃 후 세션 무효화 › 로그아웃 전 세션ID로 보호 페이지 접근 → /login": {
+            "passes": 1,
+            "fails": 0
+          },
+          "REQ-NF-L-003 세션 정책 (정보 출력용) › 동시 로그인 정책이 기대값(block)과 일치": {
+            "passes": 1,
+            "fails": 0
+          }
+        }
+}
