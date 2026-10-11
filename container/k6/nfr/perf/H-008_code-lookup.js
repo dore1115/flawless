@@ -11,7 +11,7 @@
 //   측정 전에 README의 EXPLAIN 확인 절차를 먼저 볼 것.
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { BASE_URL, USERS, sharedLogin, useSharedSession, target, aux, doc, withCsrf, location, pick, followRedirect } from "../lib/common.js";
+import { BASE_URL, USERS, adminLogin, useSharedSession, target, aux, doc, withCsrf, location, pick, followRedirect } from "../lib/common.js";
 import { PROFILE, commonOptions, scenarioFor, thresholdsFor, tagStage, makeSummary } from "../lib/profiles.js";
 
 export const options = Object.assign({}, commonOptions, {
@@ -31,7 +31,7 @@ function rowsOf(listPath, kind) {
 }
 
 export function setup() {
-  const session = sharedLogin(USERS.hr, "/hr/positions", Number(__ENV.SHARED_SESSIONS || 20));
+  const session = adminLogin(USERS.hr, "/hr/positions", Number(__ENV.SHARED_SESSIONS || 20));
 
   const emp = doc(http.get(`${BASE_URL}/hr/employees`, aux("GET /hr/employees")));
   const deptCount = {};

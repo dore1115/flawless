@@ -14,18 +14,35 @@ import exec from "k6/execution";
 export const BASE_URL = (__ENV.BASE_URL || "http://localhost:8080").replace(/\/+$/, "");
 export const PASSWORD = __ENV.TEST_PASS || "password123!";
 
-// seed_data.sql 기준 계정 (emp001~003 ADMIN_HR / emp004~006 ADMIN_IV / emp007~100 EMPLOYEE)
+// ── 계정 구성 (브랜치마다 seed_data.sql이 다름) ─────────────────────
+//   seed(dev)            : emp001~003 ADMIN_HR / emp004~006 ADMIN_IV / emp007~100 EMPLOYEE, 비밀번호 평문
+//   fix(fix-REQ-NF-G~)   : emp001~020 ADMIN_HR / emp021~040 ADMIN_IV / emp041~100 EMPLOYEE, BCrypt, max-sessions=1
+// ACCOUNTS=seed|fix 로 고르고, 지정하지 않으면 LABEL이 seed면 seed, 그 외(fix/alt/final)는 fix.
+// HR_USER / IV_USER / EMP_USER / EMP_FIRST / ID_FROM 을 직접 주면 그 값이 우선한다.
+const ACCOUNT_PRESETS = {
+  seed: { hr: "emp001", iv: "emp004", emp: "emp007", empFirst: 7, idFrom: 7, loginMode: "shared" },
+  fix: { hr: "emp001", iv: "emp021", emp: "emp041", empFirst: 41, idFrom: 21, loginMode: "multi" },
+};
+export const ACCOUNTS = (__ENV.ACCOUNTS || ((__ENV.LABEL || "seed") === "seed" ? "seed" : "fix")).toLowerCase();
+if (!ACCOUNT_PRESETS[ACCOUNTS]) throw new Error(`알 수 없는 ACCOUNTS: ${ACCOUNTS} (seed|fix)`);
+export const ACCOUNT = ACCOUNT_PRESETS[ACCOUNTS];
+
+// 관리자 세션 여러 개를 만드는 방식 (H-007, H-008)
+//   shared: 한 계정으로 여러 번 로그인 (seed — 관리자 계정이 3개뿐, 동시 로그인 제한 없음)
+//   multi : 계정을 바꿔가며 하나씩 로그인 (fix — max-sessions=1이라 같은 계정 재로그인 시 이전 세션 만료)
+export const LOGIN_MODE = (__ENV.LOGIN_MODE || ACCOUNT.loginMode).toLowerCase();
+
 export const USERS = {
-  hr: __ENV.HR_USER || "emp001",
-  iv: __ENV.IV_USER || "emp004",
-  emp: __ENV.EMP_USER || "emp007",
+  hr: __ENV.HR_USER || ACCOUNT.hr,
+  iv: __ENV.IV_USER || ACCOUNT.iv,
+  emp: __ENV.EMP_USER || ACCOUNT.emp,
 };
 
 export const loginFailures = new Counter("nfr_login_failures");
 
 /** EMPLOYEE 계정 풀에서 n번째 계정 (VU마다 다른 사원으로 조회하도록) */
 export function employeeUserFor(n) {
-  const first = Number(__ENV.EMP_FIRST || 7);
+  const first = Number(__ENV.EMP_FIRST || ACCOUNT.empFirst);
   const last = Number(__ENV.EMP_LAST || 100);
   const idx = first + (Math.abs(n) % (last - first + 1));
   return "emp" + String(idx).padStart(3, "0");
@@ -150,7 +167,7 @@ export function clearCookies(jar = http.cookieJar()) {
 }
 
 // ── setup()에서 로그인한 세션을 VU들이 나눠 쓴다 ─────────────────────
-// 관리자 계정이 3개뿐이라 관리자 전용 기능은 setup에서 만든 세션으로 부하를 건다.
+// 관리자 전용 기능은 setup에서 만든 세션으로 부하를 건다.
 // count > 1 이면 같은 계정으로 세션을 여러 개 만들어 VU에 나눠준다.
 //   → 세션 1개를 수백 VU가 공유하면 Spring의 세션 mutex(flash map 저장 등)에서 요청이 줄을 서서,
 //     실제 사용 환경에 없는 병목이 생긴다.
@@ -168,6 +185,35 @@ export function sharedLogin(username, csrfPage = "/login", count = 1) {
   }
   if (count > 1) console.log(`[setup] ${username} 세션 ${count}개 생성`);
   return { sid: sessions[0].sid, csrf: sessions[0].csrf, sessions };
+}
+
+// ── 같은 역할의 서로 다른 계정 count개로 하나씩 로그인해 세션을 만든다 (fix-REQ-NF-G cc191b9에서 가져옴) ──
+// max-sessions=1(REQ-NF-S-001)이라 sharedLogin처럼 한 계정으로 여러 번 로그인하면 이전 세션이 만료된다.
+// firstUser부터 번호를 올려가며 로그인한다. 예) multiLogin("emp001", ..., 20) → emp001~emp020 (ADMIN_HR)
+// 반환 형태는 sharedLogin과 같아서 useSharedSession(data)로 VU에 나눠준다.
+export function multiLogin(firstUser, csrfPage = "/login", count = 1) {
+  const m = firstUser.match(/^(.*?)(\d+)$/);
+  if (!m) throw new Error(`[setup] 계정 번호를 알 수 없습니다: ${firstUser}`);
+  const [, prefix, num] = m;
+  const sessions = [];
+  for (let i = 0; i < count; i++) {
+    const username = prefix + String(Number(num) + i).padStart(num.length, "0");
+    clearCookies();
+    const r = login(username);
+    if (!r.ok) throw new Error(`[setup] ${username} 로그인 실패(${i + 1}/${count}): ${describeLoginFailure(r.res)}`);
+    const sid = http.cookieJar().cookiesForURL(BASE_URL)["JSESSIONID"];
+    if (!sid || !sid.length) throw new Error(`[setup] ${username} JSESSIONID 쿠키를 받지 못했습니다.`);
+    const page = http.get(`${BASE_URL}${csrfPage}`, aux(`GET ${csrfPage}`));
+    sessions.push({ sid: sid[0], csrf: csrfFrom(page.body) });
+  }
+  console.log(`[setup] ${firstUser}부터 계정 ${count}개로 세션 ${count}개 생성`);
+  return { sid: sessions[0].sid, csrf: sessions[0].csrf, sessions };
+}
+
+/** 관리자 세션 count개 생성 — LOGIN_MODE(shared|multi)에 따라 sharedLogin/multiLogin 선택 */
+export function adminLogin(firstUser, csrfPage = "/login", count = 1) {
+  console.log(`[setup] ACCOUNTS=${ACCOUNTS}, LOGIN_MODE=${LOGIN_MODE}, 관리자 세션 ${count}개`);
+  return LOGIN_MODE === "multi" ? multiLogin(firstUser, csrfPage, count) : sharedLogin(firstUser, csrfPage, count);
 }
 
 /** VU 번호로 세션 하나를 골라 쿠키에 넣고, 그 세션({sid, csrf})을 돌려준다 */

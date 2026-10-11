@@ -48,7 +48,8 @@ function readStock() {
 
 function countOutRows() {
   const res = http.get(`${BASE_URL}/inventory/${ITEM_ID}/history`, aux("GET /inventory/{id}/history"));
-  return (res.body.match(/text-red-600 font-medium/g) || []).length;
+  // 출고 행 1건마다 "출고" 라벨과 "-N" 수량 두 곳에 text-red-600 font-medium이 붙으므로 라벨만 센다
+  return (res.body.match(/text-red-600 font-medium">\s*출고\s*</g) || []).length;
 }
 
 export function setup() {
