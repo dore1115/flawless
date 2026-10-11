@@ -57,7 +57,7 @@ public class EmployeeAssignmentService {
 
     @Transactional(readOnly = true)
     public List<Employee> findAll() {
-        return employeeRepository.findAll();
+        return employeeRepository.findAllWithDepartmentAndPosition();
     }
 
     @Transactional(readOnly = true)

@@ -34,11 +34,11 @@ WHERE a.work_date < DATE_ADD(@s, INTERVAL 1 YEAR);
 
 -- [3] (선택) REQ-NF-H-008: 사원 50,000명 추가 — 인덱스 유무 차이가 보이려면 행 수가 커야 함
 --     비밀번호는 시드와 동일한 BCrypt 해시(평문 password123!). 필요할 때만 주석 해제.
-INSERT INTO employee (username, password, name, email, address, phone, department_id, position_id, role)
-WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 50000)
-SELECT CONCAT('load', LPAD(n, 6, '0')), '$2a$10$Bx7oE4nj.iFBYhYtxvaOMOyOSAbJatllleTJjEjZwfuguQfCybayS', CONCAT('부하', n), CONCAT('load', n, '@k6.test'),
-       '부산광역시', '010-0000-0000', 1 + (n % 6), 1 + (n % 6), 'EMPLOYEE'
-FROM seq;
+--INSERT INTO employee (username, password, name, email, address, phone, department_id, position_id, role)
+--WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 50000)
+--SELECT CONCAT('load', LPAD(n, 6, '0')), '$2a$10$Bx7oE4nj.iFBYhYtxvaOMOyOSAbJatllleTJjEjZwfuguQfCybayS', CONCAT('부하', n), CONCAT('load', n, '@k6.test'),
+--       '부산광역시', '010-0000-0000', 1 + (n % 6), 1 + (n % 6), 'EMPLOYEE'
+--FROM seq;
 
 -- 확인
 SELECT (SELECT COUNT(*) FROM item) AS items, (SELECT COUNT(*) FROM stock) AS stocks,
