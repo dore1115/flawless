@@ -4,14 +4,16 @@
 //       GET  /hr/employees                  (MODE=list 또는 both 일 때, 사원 목록 EAGER N+1)
 //
 // 변경값은 "현재 값 그대로" 다시 전송한다 → 데이터는 바뀌지 않고, 조회/검증 경로의 쿼리 수만 측정됨.
-// 관리자 계정이 3개뿐이라 setup에서 emp001로 한 번 로그인한 세션을 모든 VU가 공유한다.
+// 인사 관리자 계정이 20개(emp001~020)뿐이라 VU(최대 1000)마다 계정을 줄 수 없다.
+// setup에서 계정마다 한 번씩 로그인해 세션 20개를 만들고, VU들이 나눠 쓴다 (계정당 약 50 VU).
+// (max-sessions=1이라 같은 계정으로 여러 번 로그인하면 이전 세션이 만료되므로 계정을 달리해야 함)
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { BASE_URL, USERS, sharedLogin, useSharedSession, target, doc, inputValue, selectedValue, csrfFrom, withCsrf, location, landedOn, followRedirect } from "../lib/common.js";
+import { BASE_URL, USERS, multiLogin, useSharedSession, target, doc, inputValue, selectedValue, csrfFrom, withCsrf, location, landedOn, followRedirect } from "../lib/common.js";
 import { PROFILE, commonOptions, scenarioFor, thresholdsFor, tagStage, makeSummary } from "../lib/profiles.js";
 
 const MODE = __ENV.MODE || "update"; // update | list | both
-const ID_FROM = Number(__ENV.ID_FROM || 7);
+const ID_FROM = Number(__ENV.ID_FROM || 21);
 const ID_TO = Number(__ENV.ID_TO || 100);
 
 export const options = Object.assign({}, commonOptions, {
@@ -20,7 +22,7 @@ export const options = Object.assign({}, commonOptions, {
 });
 
 export function setup() {
-  return sharedLogin(USERS.hr, "/hr/employees", Number(__ENV.SHARED_SESSIONS || 20));
+  return multiLogin(USERS.hr, "/hr/employees", Number(__ENV.SHARED_SESSIONS || 20));
 }
 
 export default function (data) {

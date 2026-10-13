@@ -25,8 +25,10 @@ public class Attendance extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
-    //! N+1 의도적으로 배치
-    @ManyToOne(fetch = FetchType.EAGER)
+    // N+1 해결: employee는 화면/배치 어느 쪽에서도 참조하지 않으므로 LAZY로 바꿔 매 Attendance 로딩마다
+    // 딸려 나가던 추가 SELECT(N+1)를 없앤다 - AttendanceBatchScheduler.clockOutBatchProcess()처럼
+    // 여러 사원의 Attendance를 한 번에 조회하는 경로에서 특히 영향이 컸다.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
     @Column(name = "work_date", nullable = false)
@@ -67,7 +69,7 @@ public class Attendance extends BaseTimeEntity {
     // seconds단위는 버리고, 분 단위만 late_minutes에 저장
     public void clockIn(LocalDateTime now) {
         if (isClockedIn()) {
-            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! REQ-NF-G-004: Exception handler 생성 필요
+            throw new BusinessException(ErrorCode.ALREADY_CLOCKED_IN);  //! REQ-NF-G-004 개선: GlobalExceptionHandler에서 처리
         }
         LocalTime CLOCK_IN_CRITERIA = LocalTime.of(9,0,0);
         this.clockIn = now;
@@ -78,7 +80,7 @@ public class Attendance extends BaseTimeEntity {
 
     public void clockOut(LocalDateTime now) {
         if(!isClockedIn()) {
-            throw new BusinessException(ErrorCode.NOT_CLOCKED_IN);  //! REQ-NF-G-004: Exception handler 생성 필요
+            throw new BusinessException(ErrorCode.NOT_CLOCKED_IN);  //! REQ-NF-G-004 개선: GlobalExceptionHandler에서 처리
         }
         LocalTime CLOCK_OUT_CRITERIA = LocalTime.of(18,0,0);
         this.clockOut = now;

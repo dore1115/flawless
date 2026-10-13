@@ -1,0 +1,82 @@
+{
+  "req": "REQ-NF-H-008",
+  "describe": "직책/부서 코드 기준 소속 사원 조회",
+  "label": "fix",
+  "profile": "breakpoint",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-10-05T22:31:30.091Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "avg": 2775.1,
+    "p50": 2388.5,
+    "p90": 4877.9,
+    "p95": 6144.9,
+    "p99": 7614.2,
+    "max": 10552.4,
+    "requests": 1241,
+    "rps": 56.4,
+    "errorRatePct": 0,
+    "droppedIterations": 548
+  },
+  "byName": {
+    "POST /hr/positions/{id}/delete (blocked)": {
+      "avg": 2744.4,
+      "p50": 2340.2,
+      "p90": 4893.8,
+      "p95": 6152.9,
+      "p99": 7489.7,
+      "max": 7878.8,
+      "errorRatePct": 0
+    },
+    "POST /hr/departments/{id}/delete (blocked)": {
+      "avg": 2807,
+      "p50": 2467.2,
+      "p90": 4862.8,
+      "p95": 6120.3,
+      "p99": 7707.6,
+      "max": 10552.4,
+      "errorRatePct": 0
+    }
+  },
+  "steps": [
+    {
+      "stage": "h01",
+      "targetRps": 100,
+      "achievedRps": 9.3,
+      "errorRatePct": 0,
+      "avg": 3200.7,
+      "p50": 2798.3,
+      "p90": 4932.8,
+      "p95": 5930.8,
+      "p99": 7452.4,
+      "max": 8985.2,
+      "broken": true,
+      "reasons": [
+        "p99 7452.4ms ≥ 3000ms",
+        "처리량 9.3/100 req/s (포화)"
+      ]
+    }
+  ],
+  "breakpoint": {
+    "stage": "h01",
+    "targetRps": 100,
+    "reasons": [
+      "p99 7452.4ms ≥ 3000ms",
+      "처리량 9.3/100 req/s (포화)"
+    ],
+    "lastStableRps": null,
+    "lastStableP99": null
+  },
+  "custom": {},
+  "checks": {
+      "302 → 목록": {
+        "passes": 1241,
+        "fails": 0
+      }
+    }
+}

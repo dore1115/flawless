@@ -10,6 +10,9 @@ scrape_configs:
       - targets: ["app:9091"]
         labels:
           service: "erp-backend"
+    scheme: "https"
+    tls_config:
+      insecure_skip_verify: true
 
   - job_name: "cadvisor"
     static_configs:

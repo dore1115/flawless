@@ -1,0 +1,124 @@
+{
+  "req": "REQ-NF-H-008",
+  "describe": "직책/부서 코드 기준 소속 사원 조회",
+  "label": "seed",
+  "profile": "breakpoint",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-10-06T17:34:55.512Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "avg": 102.4,
+    "p50": 31,
+    "p90": 51.5,
+    "p95": 310.5,
+    "p99": 2052.8,
+    "max": 3532.9,
+    "requests": 2664,
+    "rps": 10.7,
+    "errorRatePct": 0,
+    "droppedIterations": 21
+  },
+  "byName": {
+    "POST /hr/departments/{id}/delete (blocked)": {
+      "avg": 97.7,
+      "p50": 31,
+      "p90": 52.6,
+      "p95": 255.7,
+      "p99": 1955.1,
+      "max": 3532.9,
+      "errorRatePct": 0
+    },
+    "POST /hr/positions/{id}/delete (blocked)": {
+      "avg": 107,
+      "p50": 31,
+      "p90": 50.6,
+      "p95": 433.8,
+      "p99": 2114.2,
+      "max": 3505.5,
+      "errorRatePct": 0
+    }
+  },
+  "steps": [
+    {
+      "stage": "h01",
+      "targetRps": 5,
+      "achievedRps": 5,
+      "errorRatePct": 0,
+      "avg": 43.3,
+      "p50": 46.6,
+      "p90": 55.7,
+      "p95": 58,
+      "p99": 63.3,
+      "max": 65.9,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h02",
+      "targetRps": 10,
+      "achievedRps": 10,
+      "errorRatePct": 0,
+      "avg": 32,
+      "p50": 31.9,
+      "p90": 40.5,
+      "p95": 43.6,
+      "p99": 56.9,
+      "max": 118.7,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h03",
+      "targetRps": 15,
+      "achievedRps": 15,
+      "errorRatePct": 0,
+      "avg": 27.1,
+      "p50": 27.8,
+      "p90": 33.6,
+      "p95": 35.1,
+      "p99": 39.5,
+      "max": 106.7,
+      "broken": false,
+      "reasons": []
+    },
+    {
+      "stage": "h04",
+      "targetRps": 20,
+      "achievedRps": 7.3,
+      "errorRatePct": 0,
+      "avg": 461.9,
+      "p50": 31.8,
+      "p90": 1798.5,
+      "p95": 2132.1,
+      "p99": 3242.1,
+      "max": 3532.9,
+      "broken": true,
+      "reasons": [
+        "p99 3242.1ms ≥ 3000ms",
+        "처리량 7.3/20 req/s (포화)"
+      ]
+    }
+  ],
+  "breakpoint": {
+    "stage": "h04",
+    "targetRps": 20,
+    "reasons": [
+      "p99 3242.1ms ≥ 3000ms",
+      "처리량 7.3/20 req/s (포화)"
+    ],
+    "lastStableRps": 15,
+    "lastStableP99": 39.5
+  },
+  "custom": {},
+  "checks": {
+      "302 → 목록": {
+        "passes": 2664,
+        "fails": 0
+      }
+    }
+}

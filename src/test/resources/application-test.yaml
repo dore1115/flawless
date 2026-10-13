@@ -1,0 +1,13 @@
+# 테스트 전용 프로필 (FlawlessApplicationTests의 @ActiveProfiles("test"))
+# docker build의 `./gradlew build` 단계에는 MySQL 컨테이너가 없어서, @SpringBootTest가
+# Hibernate dialect를 정하지 못하고 실패한다. 컨텍스트 로딩 검증만 하면 되므로 H2(MySQL 모드)로 대체.
+spring:
+  datasource:
+    url: jdbc:h2:mem:flawless;MODE=MySQL;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=POSITION,VALUE,YEAR,MONTH,DAY
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false

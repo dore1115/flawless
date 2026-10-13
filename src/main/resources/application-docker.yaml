@@ -1,0 +1,23 @@
+server:
+  port: 8080
+  ssl:
+    enabled: true
+    key-store-type: PKCS12
+    key-store: ${SSL_KEY_STORE_PATH}
+    key-store-password: ${SSL_PASSWORD}
+spring:
+  datasource:
+    url: ${DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+logging:
+  level:
+    org.hibernate.SQL: warn
+  file:
+    path: /server/flawless/logs
+    name: app.log

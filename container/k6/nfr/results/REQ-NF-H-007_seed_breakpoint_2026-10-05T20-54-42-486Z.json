@@ -1,0 +1,86 @@
+{
+  "req": "REQ-NF-H-007",
+  "describe": "사원 정보 단일 변경 처리",
+  "label": "seed",
+  "profile": "breakpoint",
+  "baseUrl": "http://localhost:8080",
+  "finishedAt": "2026-10-05T20:54:42.485Z",
+  "criteria": {
+    "p99LimitMs": 3000,
+    "sloP95Ms": 1000,
+    "errLimit": 0.05,
+    "throughputRatio": 0.9
+  },
+  "overall": {
+    "avg": 649.1,
+    "p50": 399.1,
+    "p90": 1542.4,
+    "p95": 2041.9,
+    "p99": 2903.7,
+    "max": 5448.6,
+    "requests": 3521,
+    "rps": 146.7,
+    "errorRatePct": 0,
+    "droppedIterations": 217
+  },
+  "byName": {
+    "POST /hr/employees/{id}/assignment": {
+      "avg": 647,
+      "p50": 400.7,
+      "p90": 1511.6,
+      "p95": 2098.9,
+      "p99": 2893.8,
+      "max": 4083.9,
+      "errorRatePct": 0
+    },
+    "GET /hr/employees/{id}/info": {
+      "avg": 651.2,
+      "p50": 386.7,
+      "p90": 1548.7,
+      "p95": 1979.4,
+      "p99": 3000.2,
+      "max": 5448.6,
+      "errorRatePct": 0
+    }
+  },
+  "steps": [
+    {
+      "stage": "h01",
+      "targetRps": 100,
+      "achievedRps": 30.1,
+      "errorRatePct": 0,
+      "avg": 770.2,
+      "p50": 695.2,
+      "p90": 1702.3,
+      "p95": 2201.1,
+      "p99": 3193.4,
+      "max": 5448.6,
+      "broken": true,
+      "reasons": [
+        "p99 3193.4ms ≥ 3000ms",
+        "처리량 30.1/100 req/s (포화)"
+      ]
+    }
+  ],
+  "breakpoint": {
+    "stage": "h01",
+    "targetRps": 100,
+    "reasons": [
+      "p99 3193.4ms ≥ 3000ms",
+      "처리량 30.1/100 req/s (포화)"
+    ],
+    "lastStableRps": null,
+    "lastStableP99": null
+  },
+  "custom": {},
+  "checks": {
+      "info 200": {
+        "passes": 1807,
+        "fails": 0
+      },
+      "변경 처리 302 → info": {
+        "passes": 1714,
+        "fails": 0
+      }
+    }
+}
